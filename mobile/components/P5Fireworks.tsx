@@ -3,6 +3,23 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import p5 from 'p5';
 
+interface FireworkVibe {
+  color: string;
+  size: number;
+  pattern: string;
+  seed: number;
+}
+
+interface P5FireworksProps {
+  vibe?: FireworkVibe;
+  position?: 'center' | 'random'; // 発射位置を制御
+  fireworkEvent?: {
+    id: string;
+    vibe: FireworkVibe;
+    timestamp: number;
+  } | null;
+}
+
 interface IParticleData {
   p: p5;
   pos: p5.Vector;
@@ -103,13 +120,47 @@ class Firework {
   exploded: boolean;
   particles: Particle[];
   hue: number;
+  size: number;
+  pattern: string;
 
-  constructor(p: p5, x: number, y: number) {
+  constructor(p: p5, x: number, y: number, vibe?: FireworkVibe) {
     this.p = p;
-    this.hue = p.random(0, 360);
+    
+    // vibeデータがある場合はそれを使用、なければランダム
+    if (vibe) {
+      // 色文字列をHSBの色相に変換
+      this.hue = this.colorStringToHue(vibe.color);
+      this.size = Math.max(0.5, Math.min(2.0, vibe.size / 50)); // サイズを0.5-2.0の範囲に正規化
+      this.pattern = vibe.pattern;
+      
+      // シードを使用してランダムを再現可能にする
+      p.randomSeed(vibe.seed);
+    } else {
+      this.hue = p.random(0, 360);
+      this.size = 1.0;
+      this.pattern = 'burst';
+    }
+    
     this.firework = new Particle(p, x, y, this.hue, 255);
     this.exploded = false;
     this.particles = [];
+  }
+
+  // 色文字列をHSBの色相に変換
+  colorStringToHue(colorString: string): number {
+    // 簡単な色マッピング（実際のプロジェクトではより高度な変換が必要）
+    const colorMap: { [key: string]: number } = {
+      '#ff6b6b': 0,    // 赤
+      '#4ecdc4': 180,  // シアン
+      '#45b7d1': 200,  // 青
+      '#96ceb4': 120,  // 緑
+      '#ffeaa7': 50,   // 黄
+      '#fd79a8': 320,  // ピンク
+      '#a29bfe': 250,  // 紫
+      '#fd7f6f': 10,   // オレンジ
+    };
+    
+    return colorMap[colorString] || this.p.random(0, 360);
   }
 
   update() {
@@ -138,17 +189,35 @@ class Firework {
     }
   }
 
-  // explodeメソッドを拡張して、二次爆発にも対応
+  // explodeメソッドを拡張して、パターンとサイズに対応
   explode(x: number, y: number, baseHue: number, isSecondary: boolean = false) {
-    const numParticles = isSecondary ? 50 : 100; // 二次爆発は少なめに
-    const lifespan = isSecondary ? 100 : 255; // 二次爆発は短めに
+    let numParticles = isSecondary ? 50 : 100;
+    const lifespan = isSecondary ? 100 : 255;
+
+    // パターンに応じてパーティクル数を調整
+    if (this.pattern === 'fountain') {
+      numParticles = Math.floor(numParticles * 0.7); // 噴水は少なめ
+    } else if (this.pattern === 'burst') {
+      numParticles = Math.floor(numParticles * this.size); // サイズに応じて調整
+    }
 
     for (let i = 0; i < numParticles; i++) {
       const particleHue = (baseHue + this.p.random(-30, 30)) % 360;
-      const isSecondaryTrigger = !isSecondary && this.p.random() < 0.1; // 10%の確率で二次爆発トリガーを設定
-      const secondaryDelay = isSecondaryTrigger ? this.p.random(0.3, 1.0) : 0; // 0.3秒から1.0秒の遅延
+      const isSecondaryTrigger = !isSecondary && this.p.random() < 0.1;
+      const secondaryDelay = isSecondaryTrigger ? this.p.random(0.3, 1.0) : 0;
 
-      this.particles.push(new Particle(this.p, x, y, particleHue < 0 ? particleHue + 360 : particleHue, lifespan, true, isSecondaryTrigger, secondaryDelay, isSecondary));
+      const particle = new Particle(this.p, x, y, particleHue < 0 ? particleHue + 360 : particleHue, lifespan, true, isSecondaryTrigger, secondaryDelay, isSecondary);
+      
+      // パターンに応じて初期速度を調整
+      if (this.pattern === 'fountain') {
+        // 噴水パターン：上方向メインで少し横にも散らばる
+        particle.vel = this.p.createVector(this.p.random(-2, 2), this.p.random(-8, -4));
+      } else if (this.pattern === 'burst') {
+        // バーストパターン：全方向に均等に散らばる
+        particle.vel = p5.Vector.random2D().mult(this.p.random(1, 10 * this.size));
+      }
+      
+      this.particles.push(particle);
     }
   }
 
@@ -157,16 +226,19 @@ class Firework {
   }
 }
 
-const P5Fireworks: React.FC = () => {
+const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fireworkEvent }) => {
   const sketchRef = useRef<HTMLDivElement>(null);
   const p5Instance = useRef<p5 | null>(null);
   const fireworks = useRef<Firework[]>([]);
+  const lastEventId = useRef<string | null>(null);
 
   const sketch = useCallback((p: p5) => {
     p.setup = () => {
       p.createCanvas(p.windowWidth, p.windowHeight).parent(sketchRef.current || document.body);
       p.colorMode(p.HSB, 360, 100, 100, 255);
       p.background(0);
+      
+      // 自動的に花火を発射しない（fireworkEventがある場合のみ発射）
     };
 
     p.draw = () => {
@@ -185,8 +257,8 @@ const P5Fireworks: React.FC = () => {
     };
 
     p.mouseClicked = () => {
-      if (p.mouseY < p.height - 50) { // Prevent clicking too low (where launcher might be)
-        fireworks.current.push(new Firework(p, p.mouseX, p.mouseY));
+      if (p.mouseY < p.height - 50) {
+        fireworks.current.push(new Firework(p, p.mouseX, p.mouseY, vibe));
       }
     };
 
@@ -196,16 +268,27 @@ const P5Fireworks: React.FC = () => {
       const { x, y, hue } = customEvent.detail;
       const parentFirework = fireworks.current.find(fw => fw.exploded && fw.particles.some(p => p.pos.x === x && p.pos.y === y));
       if (parentFirework) {
-        parentFirework.explode(x, y, hue, true); // 二次爆発をトリガー
+        parentFirework.explode(x, y, hue, true);
       } else {
-        // 親花火が見つからない場合は、新しい独立した花火として追加（フォールバック）
-        const newFirework = new Firework(p, x, y);
-        newFirework.explode(x, y, hue, true); // 即座に二次爆発
+        const newFirework = new Firework(p, x, y, vibe);
+        newFirework.explode(x, y, hue, true);
         fireworks.current.push(newFirework);
       }
     });
 
-  }, []);
+  }, [vibe]);
+
+  // 新しい花火イベントを監視
+  useEffect(() => {
+    if (fireworkEvent && fireworkEvent.id !== lastEventId.current && p5Instance.current) {
+      const p = p5Instance.current;
+      const startX = position === 'center' ? p.width / 2 : p.random(p.width * 0.2, p.width * 0.8);
+      const startY = p.height - 50;
+      fireworks.current.push(new Firework(p, startX, startY, fireworkEvent.vibe));
+      lastEventId.current = fireworkEvent.id;
+      console.log('New firework added:', fireworkEvent.id);
+    }
+  }, [fireworkEvent, position]);
 
   useEffect(() => {
     if (sketchRef.current && !p5Instance.current) {
