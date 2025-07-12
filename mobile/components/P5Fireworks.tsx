@@ -17,6 +17,7 @@ interface P5FireworksProps {
     id: string;
     vibe: FireworkVibe;
     timestamp: number;
+    audioDuration?: number;
   } | null;
 }
 
@@ -99,7 +100,9 @@ class Particle implements IParticleData {
         }));
         this.hasTriggeredSecondary = true;
       }
-      this.lifespan -= this.isChildParticle ? 3 : 2; // 子パーティクルはより早く消える
+      // 音声の長さに基づいて減衰率を調整（デフォルトは3）
+      const decayRate = 3;
+      this.lifespan -= this.isChildParticle ? decayRate + 1 : decayRate;
     }
   }
 
@@ -122,9 +125,11 @@ class Firework {
   hue: number;
   size: number;
   pattern: string;
+  audioDuration?: number;
 
-  constructor(p: p5, x: number, y: number, vibe?: FireworkVibe) {
+  constructor(p: p5, x: number, y: number, vibe?: FireworkVibe, audioDuration?: number) {
     this.p = p;
+    this.audioDuration = audioDuration;
     
     // vibeデータがある場合はそれを使用、なければランダム
     if (vibe) {
@@ -191,19 +196,21 @@ class Firework {
 
   // explodeメソッドを拡張して、パターンとサイズに対応
   explode(x: number, y: number, baseHue: number, isSecondary: boolean = false) {
-    let numParticles = isSecondary ? 50 : 100;
-    const lifespan = isSecondary ? 100 : 255;
+    let numParticles = isSecondary ? 20 : 40; // パーティクル数を大幅に削減（clash対策）
+    // 音声の長さに基づいてライフスパンを計算（フレームレート50fps）
+    const baseLifespan = this.audioDuration ? Math.floor(this.audioDuration * 50) : 255;
+    const lifespan = isSecondary ? Math.floor(baseLifespan * 0.4) : baseLifespan;
 
     // パターンに応じてパーティクル数を調整
     if (this.pattern === 'fountain') {
-      numParticles = Math.floor(numParticles * 0.7); // 噴水は少なめ
+      numParticles = Math.floor(numParticles * 0.6); // 噴水は少なめ
     } else if (this.pattern === 'burst') {
-      numParticles = Math.floor(numParticles * this.size); // サイズに応じて調整
+      numParticles = Math.floor(numParticles * Math.min(this.size, 2.0)); // サイズに応じて調整（上限を設定）
     }
 
     for (let i = 0; i < numParticles; i++) {
       const particleHue = (baseHue + this.p.random(-30, 30)) % 360;
-      const isSecondaryTrigger = !isSecondary && this.p.random() < 0.1;
+      const isSecondaryTrigger = !isSecondary && this.p.random() < 0.05; // 二次爆発確率を半減（clash対策）
       const secondaryDelay = isSecondaryTrigger ? this.p.random(0.3, 1.0) : 0;
 
       const particle = new Particle(this.p, x, y, particleHue < 0 ? particleHue + 360 : particleHue, lifespan, true, isSecondaryTrigger, secondaryDelay, isSecondary);
@@ -237,6 +244,7 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
       p.createCanvas(p.windowWidth, p.windowHeight).parent(sketchRef.current || document.body);
       p.colorMode(p.HSB, 360, 100, 100, 255);
       p.background(0);
+      p.frameRate(50); // フレームレートを少し下げて負荷軽減（clash対策）
       
       // 自動的に花火を発射しない（fireworkEventがある場合のみ発射）
     };
@@ -270,7 +278,7 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
       if (parentFirework) {
         parentFirework.explode(x, y, hue, true);
       } else {
-        const newFirework = new Firework(p, x, y, vibe);
+        const newFirework = new Firework(p, x, y, vibe, fireworkEvent?.audioDuration);
         newFirework.explode(x, y, hue, true);
         fireworks.current.push(newFirework);
       }
@@ -284,9 +292,9 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
       const p = p5Instance.current;
       const startX = position === 'center' ? p.width / 2 : p.random(p.width * 0.2, p.width * 0.8);
       const startY = p.height - 50;
-      fireworks.current.push(new Firework(p, startX, startY, fireworkEvent.vibe));
+      fireworks.current.push(new Firework(p, startX, startY, fireworkEvent.vibe, fireworkEvent.audioDuration));
       lastEventId.current = fireworkEvent.id;
-      console.log('New firework added:', fireworkEvent.id);
+      console.log('New firework added:', fireworkEvent.id, 'Audio duration:', fireworkEvent.audioDuration);
     }
   }, [fireworkEvent, position]);
 

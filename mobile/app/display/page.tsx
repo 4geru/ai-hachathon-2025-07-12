@@ -29,8 +29,50 @@ export default function DisplayPage() {
     id: string;
     vibe: FireworkEventData['vibe'];
     timestamp: number;
+    audioDuration?: number;
   } | null>(null);
   const lastTriggerTime = useRef(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [audioDuration, setAudioDuration] = useState<number>(0);
+
+  // 音声を再生する関数
+  const playFireworkSound = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0; // 音声を最初から再生
+      audioRef.current.play().catch(error => {
+        console.error('音声再生エラー:', error);
+      });
+    }
+  };
+
+  // 音声の初期設定
+  useEffect(() => {
+    audioRef.current = new Audio('/sounds.mp3');
+    audioRef.current.volume = 0.5; // 音量を50%に設定
+    audioRef.current.preload = 'auto'; // 音声を事前に読み込み
+    
+    // 音声の長さを取得
+    audioRef.current.addEventListener('loadedmetadata', () => {
+      if (audioRef.current) {
+        setAudioDuration(audioRef.current.duration);
+        console.log('音声の長さ:', audioRef.current.duration, '秒');
+      }
+    });
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // 花火イベントが発生したときに音声を再生
+  useEffect(() => {
+    if (fireworkEvent) {
+      playFireworkSound();
+    }
+  }, [fireworkEvent]);
 
   useEffect(() => {
     console.log('Setting up Supabase Realtime subscription...');
@@ -45,7 +87,7 @@ export default function DisplayPage() {
           schema: 'public',
           table: 'firework_events'
         },
-        (payload) => {
+        async (payload) => {
           console.log('New firework event received:', payload);
           const newEvent = payload.new as FireworkEventData;
           
@@ -53,7 +95,8 @@ export default function DisplayPage() {
           setFireworkEvent({
             id: newEvent.id,
             vibe: newEvent.vibe,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            audioDuration: audioDuration
           });
           setLastFireworkEvent(newEvent);
           
@@ -64,6 +107,22 @@ export default function DisplayPage() {
             vibe: newEvent.vibe,
             acceleration: newEvent.event_data
           });
+
+          // 花火イベントを表示した後、データベースから削除
+          try {
+            const { error } = await supabase
+              .from('firework_events')
+              .delete()
+              .eq('id', newEvent.id);
+
+            if (error) {
+              console.error('Error deleting firework event:', error);
+            } else {
+              console.log('Firework event deleted successfully:', newEvent.id);
+            }
+          } catch (error) {
+            console.error('Error during firework event deletion:', error);
+          }
         }
       )
       .subscribe((status) => {
@@ -91,33 +150,11 @@ export default function DisplayPage() {
             setFireworkEvent({
               id: fallbackId,
               vibe: fallbackVibe,
-              timestamp: currentTime
+              timestamp: currentTime,
+              audioDuration: audioDuration
             });
             lastTriggerTime.current = currentTime;
             console.log("Firework triggered by polling (fallback):", data.acceleration.y);
-
-            // Supabaseに正しい形式でレコードを追加（フォールバック用）
-            const fireworkEventData = {
-              user_id: 'mobile-display-user',
-              event_type: 'tilt',
-              event_data: {
-                x: data.acceleration.x,
-                y: data.acceleration.y,
-                z: data.acceleration.z,
-                timestamp: currentTime
-              },
-              vibe: fallbackVibe
-            };
-
-            const { error } = await supabase
-              .from('firework_events')
-              .insert(fireworkEventData);
-
-            if (error) {
-              console.error("Error inserting firework event into Supabase:", error);
-            } else {
-              console.log("Firework event successfully sent to Supabase (fallback):", fireworkEventData);
-            }
           }
         }
       } catch (error) {
