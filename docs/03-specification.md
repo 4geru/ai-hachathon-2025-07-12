@@ -4,12 +4,19 @@
 
 ### 1.1. 全体構成
 ```mermaid
-graph TD
-    A[スマートフォンアプリ] -->|センサーデータ送信| B[Supabase Realtime]
-    B -->|イベント通知| C[ディスプレイアプリ]
-    C -->|描画| D[大画面ディスプレイ]
-    C -->|音声出力| E[スピーカー]
-    A -->|振動フィードバック| F[バイブレーション]
+sequenceDiagram
+    participant Smartphone as スマートフォンアプリ
+    participant Supabase as Supabase Realtime
+    participant Display as ディスプレイアプリ
+    participant BigScreen as 大画面ディスプレイ
+    participant Speaker as スピーカー
+    participant Vibrator as バイブレーション
+
+    Smartphone->>Supabase: センサーデータ送信 (TiltData/GestureData)
+    Supabase-->>Display: イベント通知 (FireworkEvent)
+    Display->>BigScreen: 花火描画
+    Display->>Speaker: 音声出力
+    Smartphone->>Vibrator: 振動フィードバック
 ```
 
 ### 1.2. コンポーネント構成
