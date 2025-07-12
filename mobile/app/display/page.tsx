@@ -1,8 +1,14 @@
 'use client';
 
-import P5Fireworks from '@/components/P5Fireworks';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/utils/supabase';
+import dynamic from 'next/dynamic';
+
+// P5Fireworksを動的にインポートしてSSRを無効化
+const P5Fireworks = dynamic(() => import('@/components/P5Fireworks'), {
+  ssr: false,
+  loading: () => <div className="w-full h-full bg-black flex items-center justify-center text-white">Loading fireworks...</div>
+});
 
 interface FireworkEventData {
   id: string;
@@ -34,14 +40,53 @@ export default function DisplayPage() {
   const lastTriggerTime = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [audioDuration, setAudioDuration] = useState<number>(0);
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
+
+  // 音声を有効にする関数
+  const enableAudio = async () => {
+    if (audioRef.current) {
+      try {
+        // 音声を一瞬再生してから止める（音声コンテキストを有効化）
+        audioRef.current.volume = 0;
+        await audioRef.current.play();
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.volume = 0.5;
+        setAudioEnabled(true);
+        console.log('音声が有効になりました');
+      } catch (error) {
+        console.error('音声有効化エラー:', error);
+      }
+    }
+  };
 
   // 音声を再生する関数
-  const playFireworkSound = () => {
+  const playFireworkSound = async () => {
+    // 音声が有効になっていない場合は早期リターン
+    if (!audioEnabled) {
+      console.log('音声が有効になっていないため、音声再生をスキップします');
+      return;
+    }
+    
     if (audioRef.current) {
-      audioRef.current.currentTime = 0; // 音声を最初から再生
-      audioRef.current.play().catch(error => {
+      try {
+        audioRef.current.currentTime = 0; // 音声を最初から再生
+        await audioRef.current.play();
+        console.log('音声再生成功');
+      } catch (error) {
         console.error('音声再生エラー:', error);
-      });
+        // 音声再生に失敗した場合の追加情報
+        if (error instanceof Error) {
+          console.error('エラーメッセージ:', error.message);
+          // 権限エラーの場合は音声を無効化
+          if (error.name === 'NotAllowedError') {
+            setAudioEnabled(false);
+            console.log('音声が自動的に無効化されました。音声を有効にするボタンをクリックしてください。');
+          }
+        }
+      }
+    } else {
+      console.log('音声ファイルが読み込まれていません');
     }
   };
 
@@ -59,6 +104,16 @@ export default function DisplayPage() {
       }
     });
     
+    // 音声の読み込み完了を監視
+    audioRef.current.addEventListener('canplaythrough', () => {
+      console.log('音声ファイルの読み込み完了');
+    });
+    
+    // 音声読み込みエラーを監視
+    audioRef.current.addEventListener('error', (error) => {
+      console.error('音声ファイルの読み込みエラー:', error);
+    });
+    
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -67,12 +122,12 @@ export default function DisplayPage() {
     };
   }, []);
 
-  // 花火イベントが発生したときに音声を再生
+  // 花火イベントが発生したときに音声を再生（音声が有効な場合のみ）
   useEffect(() => {
-    if (fireworkEvent) {
+    if (fireworkEvent && audioEnabled) {
       playFireworkSound();
     }
-  }, [fireworkEvent]);
+  }, [fireworkEvent, audioEnabled]);
 
   useEffect(() => {
     console.log('Setting up Supabase Realtime subscription...');
@@ -170,13 +225,37 @@ export default function DisplayPage() {
       supabase.removeChannel(channel);
       clearInterval(intervalId);
     };
-  }, []);
+  }, [audioDuration]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-4">Sky Canvas - Display</h1>
         <p className="text-gray-600">スマートフォンを傾けて花火を打ち上げよう！</p>
+        
+        {/* 音声有効化ボタン */}
+        {!audioEnabled && (
+          <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <p className="text-sm text-yellow-800 mb-2">
+              🔊 音声を有効にすると、花火の音が聞こえます
+            </p>
+            <button
+              onClick={enableAudio}
+              className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
+            >
+              音声を有効にする
+            </button>
+          </div>
+        )}
+        
+        {audioEnabled && (
+          <div className="mt-4 p-2 bg-green-50 rounded-lg border border-green-200">
+            <p className="text-sm text-green-800">
+              🎵 音声が有効になりました
+            </p>
+          </div>
+        )}
+        
         {lastFireworkEvent && (
           <div className="mt-4 p-4 bg-blue-50 rounded-lg">
             <p className="text-sm text-gray-700">

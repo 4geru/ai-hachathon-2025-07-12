@@ -284,7 +284,7 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
       }
     });
 
-  }, [vibe]);
+  }, [vibe, fireworkEvent?.audioDuration]);
 
   // 新しい花火イベントを監視
   useEffect(() => {

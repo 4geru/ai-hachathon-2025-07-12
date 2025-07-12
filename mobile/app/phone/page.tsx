@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/utils/supabase'; // Supabaseクライアントをインポート
-import P5Fireworks from '@/components/P5Fireworks';
 
 export default function PhonePage() {
   const [acceleration, setAcceleration] = useState<{ x: number | null; y: number | null; z: number | null }>({ x: null, y: null, z: null });
@@ -11,16 +10,6 @@ export default function PhonePage() {
   const [orientationPermissionGranted, setOrientationPermissionGranted] = useState<boolean>(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [fireworkSentMessage, setFireworkSentMessage] = useState<boolean>(false);
-  const [fireworkEvent, setFireworkEvent] = useState<{
-    id: string;
-    vibe: {
-      color: string;
-      size: number;
-      pattern: string;
-      seed: number;
-    };
-    timestamp: number;
-  } | undefined>(undefined);
   const lastMessageTime = useRef(0);
 
   const requestPermission = async () => {
@@ -59,7 +48,6 @@ export default function PhonePage() {
           console.warn("DeviceOrientation permission denied.");
         }
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error("Error requesting DeviceOrientation permission:", error);
       }
     } else {
@@ -118,12 +106,7 @@ export default function PhonePage() {
                 seed: Math.floor(Math.random() * 1000)
               };
 
-              // 花火をトリガー
-              setFireworkEvent({
-                id: `phone-${currentTime}`,
-                vibe: fireworkVibe,
-                timestamp: currentTime
-              });
+              // 花火をトリガー（Display側で処理）
 
               // Supabaseに花火イベントを送信
               const fireworkEvent = {

@@ -11,6 +11,20 @@ const nextConfig: NextConfig = {
     // ビルド時のTypeScriptエラーを無視（必要に応じて）
     ignoreBuildErrors: false,
   },
+  // 権限ポリシーの警告を修正
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()'
+          }
+        ]
+      }
+    ];
+  },
 };
 
 export default nextConfig;

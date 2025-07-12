@@ -1,20 +1,32 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-// Google Fontsの設定を一時的に無効化（デプロイ時のSSL証明書問題を回避）
-// const geistSans = Geist({
-//   variable: "--font-geist-sans",
-//   subsets: ["latin"],
-// });
-
-// const geistMono = Geist_Mono({
-//   variable: "--font-geist-mono",
-//   subsets: ["latin"],
-// });
-
 export const metadata: Metadata = {
-  title: "花火アプリ",
-  description: "スマートフォンの加速度センサーで花火を打ち上げるアプリ",
+  title: "Sky Canvas - 空に描く、あなたの創造力",
+  description: "あなたの感情が花火になる。音楽と光が織りなす全く新しい体験。スマートフォンを振るだけで、心の動きが空に舞い踊る。Vibes = 花火 = 音の融合体験。",
+  keywords: ["花火", "音楽", "センサー", "リアルタイム", "WebGL", "p5.js", "感情表現", "デジタルアート"],
+  authors: [{ name: "Sky Canvas Team" }],
+  openGraph: {
+    title: "Sky Canvas - 空に描く、あなたの創造力",
+    description: "あなたの感情が花火になる。音楽と光が織りなす全く新しい体験。",
+    type: "website",
+    locale: "ja_JP",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sky Canvas - 空に描く、あなたの創造力",
+    description: "あなたの感情が花火になる。音楽と光が織りなす全く新しい体験。",
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -24,6 +36,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" 
+          rel="stylesheet" 
+        />
+        <meta name="theme-color" content="#1a1a2e" />
+        <meta name="msapplication-TileColor" content="#1a1a2e" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Sky Canvas" />
+      </head>
       <body>
         {children}
       </body>
