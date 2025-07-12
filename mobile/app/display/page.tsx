@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/utils/supabase';
 import dynamic from 'next/dynamic';
+import { QRCodeSVG } from 'qrcode.react';
 
 // P5Fireworksを動的にインポートしてSSRを無効化
 const P5Fireworks = dynamic(() => import('@/components/P5Fireworks'), {
@@ -41,6 +42,15 @@ export default function DisplayPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [audioDuration, setAudioDuration] = useState<number>(0);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
+  const [phoneUrl, setPhoneUrl] = useState<string>('');
+
+  // 現在のホスト名を取得してphone URLを生成
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const currentUrl = window.location.origin;
+      setPhoneUrl(`${currentUrl}/phone`);
+    }
+  }, []);
 
   // 音声を有効にする関数
   const enableAudio = async () => {
@@ -228,20 +238,48 @@ export default function DisplayPage() {
   }, [audioDuration]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-4">Sky Canvas - Display</h1>
-        <p className="text-gray-600">スマートフォンを傾けて花火を打ち上げよう！</p>
-        
+    <main className="flex min-h-screen flex-col items-center p-24">
+      {/* ヘッダーセクション */}
+      <div className="w-full flex justify-between items-start mb-8">
+        {/* 左側：タイトル */}
+        <div className="text-left">
+          <h1 className="text-3xl font-bold mb-4">Sky Canvas - Display</h1>
+          <p className="text-gray-600">スマートフォンを傾けて花火を打ち上げよう！</p>
+        </div>
+
+        {/* 右側：QRコード */}
+        {phoneUrl && (
+          <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-300">
+            <div className="text-center mb-2">
+              <p className="text-sm font-semibold text-gray-800">スマートフォンでスキャン</p>
+              <p className="text-xs text-gray-600">花火を操作しよう！</p>
+            </div>
+            <QRCodeSVG
+              value={phoneUrl}
+              size={120}
+              bgColor="#ffffff"
+              fgColor="#000000"
+              level="M"
+              includeMargin={true}
+            />
+            <div className="mt-2 text-center">
+              <p className="text-xs text-gray-500 break-all max-w-[120px]">{phoneUrl}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* コントロール部分 - 中央に配置 */}
+      <div className="flex flex-col items-center justify-center flex-1">
         {/* 音声有効化ボタン */}
         {!audioEnabled && (
-          <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-            <p className="text-sm text-yellow-800 mb-2">
+          <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 mb-4">
+            <p className="text-sm text-yellow-800 mb-2 text-center">
               🔊 音声を有効にすると、花火の音が聞こえます
             </p>
             <button
               onClick={enableAudio}
-              className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
+              className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors w-full"
             >
               音声を有効にする
             </button>
@@ -249,19 +287,19 @@ export default function DisplayPage() {
         )}
         
         {audioEnabled && (
-          <div className="mt-4 p-2 bg-green-50 rounded-lg border border-green-200">
-            <p className="text-sm text-green-800">
+          <div className="p-2 bg-green-50 rounded-lg border border-green-200 mb-4">
+            <p className="text-sm text-green-800 text-center">
               🎵 音声が有効になりました
             </p>
           </div>
         )}
         
         {lastFireworkEvent && (
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-gray-700">
+          <div className="p-4 bg-blue-50 rounded-lg mb-4 max-w-md">
+            <p className="text-sm text-gray-700 text-center">
               最新の花火: {lastFireworkEvent.user_id} さんが {lastFireworkEvent.event_type} で発火
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 text-center">
               色: {lastFireworkEvent.vibe.color} | 
               サイズ: {lastFireworkEvent.vibe.size.toFixed(1)} | 
               パターン: {lastFireworkEvent.vibe.pattern}
@@ -269,7 +307,11 @@ export default function DisplayPage() {
           </div>
         )}
       </div>
-      <P5Fireworks fireworkEvent={fireworkEvent} />
+      
+      {/* 花火コンポーネント - 背景として配置 */}
+      <div className="absolute inset-0 pointer-events-none">
+        <P5Fireworks fireworkEvent={fireworkEvent} />
+      </div>
     </main>
   );
 } 
