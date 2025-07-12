@@ -113,7 +113,7 @@ export default function PhonePage() {
               // 花火のvibeデータを生成
               const fireworkVibe = {
                 color: '#ff6b6b',
-                size: Math.abs(acceleration.y) * 10,
+                size: Math.abs(acceleration.y) * 20, // サイズを大きくするため係数を増加
                 pattern: 'burst',
                 seed: Math.floor(Math.random() * 1000)
               };

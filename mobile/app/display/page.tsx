@@ -82,7 +82,7 @@ export default function DisplayPage() {
           if (data.acceleration.y > 10 && (currentTime - lastTriggerTime.current > 1000)) {
             const fallbackVibe = {
               color: '#4ecdc4',
-              size: Math.abs(data.acceleration.y) * 8,
+              size: Math.abs(data.acceleration.y) * 15, // サイズを大きくするため係数を増加
               pattern: 'fountain',
               seed: Math.floor(Math.random() * 1000)
             };

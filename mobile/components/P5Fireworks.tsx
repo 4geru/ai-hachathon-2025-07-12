@@ -70,7 +70,7 @@ class Particle implements IParticleData {
     if (exploded) {
       this.vel = p5.Vector.random2D().mult(p.random(1, 10));
     } else {
-      this.vel = p.createVector(0, p.random(-12, -8)); // Initial upward velocity for launch
+      this.vel = p.createVector(0, p.random(-18, -12)); // Initial upward velocity for launch (increased for higher launch)
     }
   }
 
@@ -105,7 +105,7 @@ class Particle implements IParticleData {
 
   display() {
     this.p.stroke(this.hue, this.saturation, this.brightness, this.lifespan);
-    this.p.strokeWeight(2);
+    this.p.strokeWeight(3); // パーティクルのサイズを大きくして、より見やすく
     this.p.point(this.pos.x, this.pos.y);
   }
 
@@ -130,7 +130,7 @@ class Firework {
     if (vibe) {
       // 色文字列をHSBの色相に変換
       this.hue = this.colorStringToHue(vibe.color);
-      this.size = Math.max(0.5, Math.min(2.0, vibe.size / 50)); // サイズを0.5-2.0の範囲に正規化
+      this.size = Math.max(1.0, Math.min(4.0, vibe.size / 30)); // サイズを1.0-4.0の範囲に正規化（より大きく）
       this.pattern = vibe.pattern;
       
       // シードを使用してランダムを再現可能にする
@@ -214,7 +214,7 @@ class Firework {
         particle.vel = this.p.createVector(this.p.random(-2, 2), this.p.random(-8, -4));
       } else if (this.pattern === 'burst') {
         // バーストパターン：全方向に均等に散らばる
-        particle.vel = p5.Vector.random2D().mult(this.p.random(1, 10 * this.size));
+        particle.vel = p5.Vector.random2D().mult(this.p.random(2, 15 * this.size));
       }
       
       this.particles.push(particle);
