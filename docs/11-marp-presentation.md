@@ -18,15 +18,9 @@ style: |
 
 ---
 
-# 夜空に物足りなさを感じていませんか？
-### リアルな花火の制約...
-*   場所の制限
-*   費用の問題
-*   環境への影響
+# vibesに物足りなさを感じていませんか？
 
-### デジタルアートの限界...
-*   共有のしにくさ
-*   体験の限定性
+# **vibes ぶち上がってますか？**
 
 **私たちはこの課題を解決します。**
 
@@ -41,10 +35,7 @@ style: |
 - **センサー技術**: 直感的なインタラクション
 - **クリエイティブ表現**: 新しい芸術体験の創造
 
-### **🏆 3つの賞への挑戦**
-- **🤖 AI駆動開発賞**: Claude、GitHub Copilot、Cursor AIによる開発効率化
-- **🔍 Findy賞**: 技術的革新性とエンジニアリング品質
-- **👥 オーディエンス賞**: 直感的で魅力的な体験デザイン
+
 
 ---
 
@@ -56,24 +47,6 @@ style: |
 - **GitHub Copilot**: リアルタイム開発支援
 - **Cursor AI**: コード生成・最適化
 - **Supabase AI**: データベース設計支援
-
-### **⚡ AI駆動開発の成果**
-- **開発時間**: 従来の1/3に短縮
-- **コード品質**: AI支援による継続的改善
-- **技術選択**: 最適なスタックの自動提案
-- **バグ修正**: 予測的問題解決
-
-<div class="mermaid">
-graph LR
-    A[課題定義] -->|Claude| B[アーキテクチャ設計]
-    B -->|Copilot| C[コード実装]
-    C -->|Cursor| D[最適化・改善]
-    D -->|AI Analysis| E[品質向上]
-    E --> F[🎆 Sky Canvas]
-    
-    style A fill:#e1f5fe,stroke:#01579b
-    style F fill:#ff6b6b,stroke:#d63031
-</div>
 
 ---
 
@@ -89,7 +62,9 @@ graph LR
 - **音響効果**: 花火の種類に応じた爆発音・余韻音
 - **音楽連動**: BGMのビートに合わせた自動発射
 - **振動フィードバック**: 爆発の瞬間にデバイスが振動
-
+---
+# 🎵 Vibes = 花火 = 音 の融合体験
+## **感情と視覚と聴覚を統合した新しいエンターテインメント**
 ### **🌟 体験の3層構造**
 1. **感情層**: あなたの「Vibe」を表現
 2. **視覚層**: 美しい花火として可視化
@@ -118,7 +93,10 @@ graph LR
 *   **🔍 品質向上**: Cursor AI による自動リファクタリング
 *   **📊 データ設計**: Supabase AI でスキーマ最適化
 *   **🎨 UI/UX**: AI支援による直感的インターフェース設計
+---
 
+# 🎯 ハッカソンでの圧倒的成果
+### **AI駆動開発** によるフルスタック実装
 #### 🎆 技術的革新ポイント
 *   **リアルタイム通信**: **1秒以内** の応答性実現
 *   **センサー統合**: 6軸センサーデータの高精度処理
@@ -148,22 +126,6 @@ graph LR
 
 ---
 
-# 技術的な挑戦と革新
-### 「Sky Canvas」を支える最新テクノロジー
-
-<div class="mermaid">
-graph TD
-    A[🎵 Vibe入力<br/>センサー + 音楽] -->|感情データ| B[Supabase Realtime<br/>WebSocket通信]
-    B -->|瞬時同期| C[🎆 花火エンジン<br/>視覚レンダリング]
-    C -->|連動演出| D[🖥️ ディスプレイ<br/>p5.js + WebGL]
-    A -->|🎵 音楽解析| E[🔊 音響システム<br/>Web Audio API]
-    E -->|リズム連動| C
-    C -->|📳 触覚連動| F[バイブレーション<br/>Vibration API]
-    
-    style A fill:#ff6b6b,stroke:#d63031
-    style C fill:#4ecdc4,stroke:#00b894
-    style E fill:#fdcb6e,stroke:#e17055
-</div>
 
 #### 🛠️ Vibes統合技術スタック
 *   **🎵 音楽・Vibe処理**: Web Audio API + リアルタイム音響解析
@@ -172,105 +134,6 @@ graph TD
 *   **🔄 リアルタイム通信**: Supabase Realtime WebSocket
 *   **🎨 フロントエンド**: React + Next.js 14, TypeScript
 *   **📳 触覚フィードバック**: Vibration API (音楽・花火連動)
-
----
-
-# 🚀 現在の実装状況
-
-### **✅ Vibes統合システム - 実現済み機能**
-*   **🎵 音楽・Vibes入力**: リアルタイム音響解析基盤
-*   **🎆 花火視覚化**: 感情に応じた高品質パーティクルシステム
-*   **📱 6軸センサー**: 加速度・角度・振動の統合処理
-*   **🔄 瞬時同期**: 1秒以内のリアルタイム通信
-*   **🎨 表現力**: 音楽に連動した花火パターン生成
-*   **🌐 マルチデバイス**: 複数端末での同時体験
-
-### **🎯 Vibes完全統合への最終ステップ**
-1. **🎵 音楽ビート解析** → 花火自動発射システム
-2. **📳 触覚シンフォニー** → 音楽・花火連動振動
-3. **🤖 AI感情認識** → Vibesに基づく花火パターン自動生成
-4. **🎪 ライブ演出** → リアルタイム音楽イベント連携
-
----
-
-# パフォーマンス最適化の成果
-### 🔧 技術的な挑戦と解決策
-
-#### **課題**: データベース負荷とレンダリング重量化
-#### **解決策**: 段階的最適化アプローチ
-
-*   **パーティクル数**: 100個 → 40個 (**60%削減**)
-*   **フレームレート**: 60fps → 50fps (安定性向上)
-*   **花火の迫力**: 高度**50%向上**、サイズ**100%拡大**
-*   **リアルタイム性**: **1秒以内**の応答性を維持
-
-#### **結果**: 負荷軽減と視覚体験の両立を実現
-
----
-
-# 📊 Mermaidダイアグラムの活用例
-### MarpでのMermaid表示のデモンストレーション
-
-#### **📈 シーケンス図** - リアルタイム通信
-<div class="mermaid">
-sequenceDiagram
-    participant スマホ
-    participant Supabase
-    participant ディスプレイ
-    
-    スマホ->>Supabase: センサーデータ送信
-    Supabase->>ディスプレイ: リアルタイム通知
-    ディスプレイ->>ディスプレイ: 花火描画
-    Note over ディスプレイ: 1秒以内の応答
-</div>
-
-#### **🎯 ガントチャート** - 開発スケジュール
-<div class="mermaid">
-gantt
-    title Sky Canvas 開発スケジュール
-    dateFormat  YYYY-MM-DD
-    section 基本機能
-    センサー取得    :done, sensor, 2025-01-01, 2025-01-05
-    花火描画        :done, firework, 2025-01-03, 2025-01-08
-    section 高度機能
-    リアルタイム通信 :done, realtime, 2025-01-06, 2025-01-10
-    音響効果        :active, audio, 2025-01-11, 2025-01-15
-    AI生成機能      :future, ai, 2025-01-16, 2025-01-25
-</div>
-
----
-
-# 今後の展望
-### 「Sky Canvas」の無限の可能性
-
-#### **🎯 短期目標 - Vibes完全統合**
-*   **🎵 音楽ビート連動**: リアルタイム音響解析による自動発射
-*   **📳 触覚シンフォニー**: 音楽・花火・振動の三位一体体験
-*   **🤖 AI感情認識**: Vibesに基づく花火パターン自動生成
-*   **🎪 ライブパフォーマンス**: リアルタイム音楽イベント対応
-
-#### **🌟 長期ビジョン - 新しい表現文化の創造**
-*   **🎭 アーティスト・コラボ**: 音楽家・DJ・パフォーマーとの協働
-*   **🎪 フェス・イベント**: 大規模音楽イベントでの花火演出
-*   **🎓 教育・療育**: 音楽療法・創造性教育への応用
-*   **🌍 グローバル展開**: 世界中の音楽文化との融合
-*   **🎨 新ジャンル創造**: 「Vibes Art」という新しい表現分野の確立
-
----
-
-# 開発の軌跡
-### **Before** → **After** → **Future**
-
-#### **🔄 Vibes統合の進化**
-**技術デモ** → **感情×視覚の融合** → **音楽×花火×感情の三位一体**
-
-*   **過去**: 基本的なセンサー取得、単純な花火描画
-*   **現在**: Vibes感知 + 音楽連動 + リアルタイム花火シンフォニー
-*   **未来**: AI感情認識 + 触覚シンフォニー + 新しい表現文化の創造
-
-#### **🎵 体験の進化**
-- 技術実証 → **感情の可視化** → **音楽と花火の融合芸術**
-
 ---
 
 # あなたの空に、無限の創造力を。
@@ -286,70 +149,3 @@ gantt
 **〜 Vibes = 花火 = 音。あなたの心が空に舞い踊る 〜**
 
 **質疑応答をお待ちしております** 🙋‍♂️🙋‍♀️
-
---- 
-
----
-
-# 🎨 MarpでのMermaid設定とコツ
-### より美しいダイアグラムの作成方法
-
-#### **🔧 基本設定**
-```markdown
----
-marp: true
-theme: default
-class: invert
----
-
-<div class="mermaid">
-graph TD
-    A[ノード1] --> B[ノード2]
-</div>
-```
-
-#### **🎭 スタイリング技術**
-<div class="mermaid">
-graph TD
-    A[開始] --> B{条件分岐}
-    B -->|Yes| C[処理A]
-    B -->|No| D[処理B]
-    C --> E[終了]
-    D --> E
-    
-    classDef startEnd fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef process fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef decision fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    
-    class A,E startEnd
-    class C,D process
-    class B decision
-</div>
-
-#### **💡 プレゼンテーションでの活用ポイント**
-- **視覚的な説明**: 複雑な概念を図解で分かりやすく
-- **リアルタイム編集**: プレゼン中にダイアグラムを調整可能
-- **インタラクティブ性**: 聴衆の理解度に応じて詳細を追加
-
-<script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-  mermaid.initialize({
-    startOnLoad: true,
-    theme: 'dark',
-    themeVariables: {
-      primaryColor: '#4a90e2',
-      primaryTextColor: '#ffffff',
-      primaryBorderColor: '#4a90e2',
-      lineColor: '#ffffff',
-      secondaryColor: '#f0f0f0',
-      tertiaryColor: '#ffffff',
-      background: '#1a1a1a',
-      backgroundSecondary: '#2d2d2d',
-      backgroundTertiary: '#3d3d3d',
-      darkMode: true,
-      fontFamily: 'Arial, sans-serif'
-    }
-  });
-</script>
-
---- 
