@@ -1,11 +1,13 @@
 'use client';
 
-import P5Fireworks from '@/components/P5Fireworks';
+import React from 'react';
 
 export default function DisplayPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <P5Fireworks />
-    </main>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', textAlign: 'center', backgroundColor: '#000' }}>
+      <h1 style={{ color: '#fff' }}>Sky Canvas Display</h1>
+      <p style={{ color: '#fff' }}>Waiting for fireworks...</p>
+      {/* ここに花火のレンダリングコンポーネントを配置します */}
+    </div>
   );
 } 
