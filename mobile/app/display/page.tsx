@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/utils/supabase';
 import dynamic from 'next/dynamic';
-import { QRCodeSVG } from 'qrcode.react';
 
 // P5Fireworksを動的にインポートしてSSRを無効化
 const P5Fireworks = dynamic(() => import('@/components/P5Fireworks'), {
@@ -68,11 +67,54 @@ export default function DisplayPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioPool = useRef<HTMLAudioElement[]>([]);
   const [audioDuration, setAudioDuration] = useState<number>(0);
+  // Web Audio API 用の参照
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const launchBufferRef = useRef<AudioBuffer | null>(null);
+  const explosionBufferRef = useRef<AudioBuffer | null>(null);
+  const peakOffsetRef = useRef<number>(0);
   const maxConcurrentSounds = 5; // 同時再生可能な音声数
   const explosionSyncDelay = 120; // 視覚的爆発との同期のための遅延時間（ms）
   const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
   const [phoneUrl, setPhoneUrl] = useState<string>('');
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
+  // ========= 画面スリープ防止 (Wake Lock) =========
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+          wakeLockRef.current?.addEventListener('release', () => {
+            console.log('Wake Lock released');
+          });
+          console.log('Wake Lock acquired');
+        }
+      } catch (err) {
+        console.error('Wake Lock error:', err);
+      }
+    };
+
+    requestWakeLock();
+
+    // タブが非表示→再表示になった際に再取得
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release();
+        wakeLockRef.current = null;
+      }
+    };
+  }, []);
+  const launchVolume = 1.5; // ヒュー音の音量倍率（通常=1.0）
 
   // 現在のホスト名を取得してphone URLを生成
   useEffect(() => {
@@ -98,7 +140,6 @@ export default function DisplayPage() {
         }
 
         // 音声を一瞬再生してから止める（音声コンテキストを有効化）
-        const originalVolume = audioRef.current.volume;
         audioRef.current.volume = 0.1; // 完全に0にするとブラウザが再生を無視する場合がある
         
         const playPromise = audioRef.current.play();
@@ -113,6 +154,50 @@ export default function DisplayPage() {
           }
         }, 100);
         
+        /* ---------------- Web Audio 初期化 ---------------- */
+        if (!audioCtxRef.current) {
+          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+          audioCtxRef.current = new AudioCtx();
+        }
+        if (audioCtxRef.current && (!launchBufferRef.current || !explosionBufferRef.current)) {
+          // launch 音源
+          const launchRes = await fetch('/sounds_launch.mp3');
+          const launchArr = await launchRes.arrayBuffer();
+          launchBufferRef.current = await audioCtxRef.current.decodeAudioData(launchArr);
+
+          // explosion 音源
+          const expRes = await fetch('/sounds_explosion.mp3');
+          const expArr = await expRes.arrayBuffer();
+          const decoded = await audioCtxRef.current.decodeAudioData(expArr);
+          explosionBufferRef.current = decoded;
+          
+          // ピーク検出（簡易 RMS）
+          const ch = decoded.getChannelData(0);
+          let maxRms = 0;
+          let peakSample = 0;
+          const block = 1024;
+          for (let i = 0; i < ch.length; i += block) {
+            let sum = 0;
+            for (let j = 0; j < block && i + j < ch.length; j++) {
+              const v = ch[i + j];
+              sum += v * v;
+            }
+            const rms = Math.sqrt(sum / block);
+            if (rms > maxRms) {
+              maxRms = rms;
+              peakSample = i;
+            }
+          }
+          peakOffsetRef.current = peakSample / decoded.sampleRate;
+          console.log('爆発音ピークオフセット(sec):', peakOffsetRef.current);
+        }
+
+        // AudioContext をユーザー操作内で resume
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+          await audioCtxRef.current.resume();
+        }
+
+        // 全て準備完了後に audioEnabled
         setAudioEnabled(true);
         console.log('音声が有効になりました');
       } catch (error) {
@@ -282,25 +367,52 @@ export default function DisplayPage() {
     };
   }, []);
 
-  // 花火爆発イベントを監視して音声を再生
+  // 花火爆発イベントを監視して Web Audio で正確に音声を再生
   useEffect(() => {
-    const handleFireworkExplosion = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const { id } = customEvent.detail;
-      
-      if (audioEnabled) {
-        // 視覚的な爆発エフェクトとの同期のための遅延
-        playFireworkSound(explosionSyncDelay);
-        console.log(`爆発音再生予約: ${id} (${explosionSyncDelay}ms遅延)`);
-      }
+    const handleFireworkExplosion = () => {
+      if (!audioEnabled) return;
+      const ctx = audioCtxRef.current;
+      const buffer = explosionBufferRef.current;
+      if (!ctx || !buffer) return;
+
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+
+      const visualLag = 1 / 60; // 描画 1 フレーム ≒ 16ms
+      const offset = Math.max(0, peakOffsetRef.current - visualLag);
+      src.start(ctx.currentTime, offset);
     };
 
     window.addEventListener('fireworkExploded', handleFireworkExplosion);
-    
     return () => {
       window.removeEventListener('fireworkExploded', handleFireworkExplosion);
     };
   }, [audioEnabled]);
+
+  // 花火打ち上げ開始時にヒュー音を再生
+  useEffect(() => {
+    if (!fireworkEvent || !audioEnabled) return;
+    const ctx = audioCtxRef.current;
+    const buffer = launchBufferRef.current;
+    if (!ctx) return;
+    if (!buffer) {
+      // バッファ未読込の場合、少し待って再試行
+      setTimeout(() => {
+        setFireworkEvent((e) => (e ? { ...e } : null));
+      }, 100);
+      return;
+    }
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const gain = ctx.createGain();
+    gain.gain.value = launchVolume;
+    src.connect(gain).connect(ctx.destination);
+    src.start(ctx.currentTime);
+  }, [fireworkEvent, audioEnabled]);
 
   useEffect(() => {
     console.log('Setting up Supabase Realtime subscription...');
