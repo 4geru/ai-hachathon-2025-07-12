@@ -71,7 +71,6 @@ export default function DisplayPage() {
   const launchBufferRef = useRef<AudioBuffer | null>(null);
   const explosionBufferRef = useRef<AudioBuffer | null>(null);
   const peakOffsetRef = useRef<number>(0);
-  const explosionSyncDelay = 120; // 視覚的爆発との同期のための遅延時間（ms）
   const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
   const [phoneUrl, setPhoneUrl] = useState<string>('');
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
@@ -514,90 +513,12 @@ export default function DisplayPage() {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden" onClick={enableAudio}>
-      <SkyCanvasHeader variant="display" />
-      {/* <div className="absolute top-4 left-4 text-white bg-black bg-opacity-50 p-4 rounded-lg">
-        <h1 className="text-3xl font-bold">Sky Canvas</h1>
-        <p>Tilt your smartphone to launch your own fireworks!</p>
-        <div className="mt-4 p-4 border border-gray-600 rounded-lg">
-          <p className="text-lg">Control URL:</p>
-          {phoneUrl ? (
-            <a href={phoneUrl} target="_blank" rel="noopener noreferrer" className="text-xl text-cyan-400 hover:underline">
-              {phoneUrl}
-            </a>
-          ) : (
-            <p>Generating URL...</p>
-          )}
-        </div>
-        {!audioEnabled && (
-          <div className="mt-4 p-4 bg-yellow-900 border border-yellow-600 rounded-lg">
-            <p className="font-bold">Click the screen to enable audio</p>
-          </div>
-        )}
-        {audioEnabled && (
-          <div className="mt-4 p-4 bg-green-900 border border-green-600 rounded-lg">
-            <p className="font-bold text-green-200">🎵 Audio System Enabled</p>
-            <p className="text-green-300 text-sm">Using Web Audio API</p>
-            <p className="text-green-300 text-sm">Explosion sync delay: {explosionSyncDelay}ms</p>
-            <p className="text-green-300 text-sm">Whoosh sound: sounds_launch.mp3</p>
-            <div className="mt-2 space-x-2 flex flex-wrap gap-2">
-              <button 
-                onClick={() => {
-                  console.log('"Whoosh only" button clicked');
-                  playFireworkLaunchSound();
-                }}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded text-sm"
-              >
-                Whoosh Only
-              </button>
-              <button 
-                onClick={() => {
-                  console.log('"Explosion only" button clicked');
-                  playFireworkExplosionSound();
-                }}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded text-sm"
-              >
-                Explosion Only
-              </button>
-              <button 
-                onClick={() => {
-                  console.log('"Complete test" button clicked');
-                  // 完全な花火テスト（統合関数使用）
-                  launchCompleteFirework({
-                    id: `test-${Date.now()}`,
-                    vibe: { color: '#4ecdc4', size: 50, pattern: 'burst', seed: Math.random() }
-                  });
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded text-sm"
-              >
-                Complete Test
-              </button>
-            </div>
-          </div>
-        )}
-        
-        <div className="mt-4 p-3 bg-gray-900 border border-gray-600 rounded-lg">
-          <div className="flex items-center space-x-2">
-            {connectionStatus === 'connected' && (
-              <>
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-green-200 text-sm">Real-time connected</span>
-              </>
-            )}
-            {connectionStatus === 'connecting' && (
-              <>
-                <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
-                <span className="text-yellow-200 text-sm">Connecting...</span>
-              </>
-            )}
-            {(connectionStatus === 'disconnected' || connectionStatus === 'error') && (
-              <>
-                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                <span className="text-orange-200 text-sm">Polling mode</span>
-              </>
-            )}
-          </div>
-        </div>
-      </div> */}
+      <SkyCanvasHeader 
+        variant="display" 
+        // showConnectionStatus={true}
+        // connectionStatus={connectionStatus}
+        // phoneUrl={phoneUrl}
+      />
       <P5Fireworks key="single-fireworks" fireworkEvent={fireworkEvent} />
     </div>
   );

@@ -104,10 +104,12 @@ class Firework {
   size: number;
   pattern: string;
   audioDuration?: number;
+  isClickFirework: boolean;
 
-  constructor(p: p5, x: number, y: number, vibe?: FireworkVibe, audioDuration?: number) {
+  constructor(p: p5, x: number, y: number, vibe?: FireworkVibe, audioDuration?: number, isClickFirework: boolean = false) {
     this.p = p;
     this.audioDuration = audioDuration;
+    this.isClickFirework = isClickFirework;
     
     if (vibe) {
       this.hue = this.colorStringToHue(vibe.color);
@@ -143,7 +145,18 @@ class Firework {
   update() {
     if (!this.exploded) {
       this.firework.update();
-      if (this.firework.vel.y >= 0) {
+      
+      // クリック花火の場合はより早く爆発させる（より低い位置で）
+      let shouldExplode = false;
+      if (this.isClickFirework) {
+        // クリック花火は上昇速度が0になるか、画面の下半分に達したら爆発
+        shouldExplode = this.firework.vel.y >= 0 || this.firework.pos.y <= this.p.height * 0.5;
+      } else {
+        // 通常の花火は従来通り
+        shouldExplode = this.firework.vel.y >= 0;
+      }
+      
+      if (shouldExplode) {
         this.explode(this.firework.pos.x, this.firework.pos.y, this.hue);
         this.exploded = true;
         
@@ -236,7 +249,7 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
       
       const sketch = (p: p5) => {
         p.setup = () => {
-          const canvas = p.createCanvas(p.windowWidth, p.windowHeight);
+          const canvas = p.createCanvas(p.windowWidth, p.windowHeight - 300);
           canvas.parent(containerRef.current!);
           p.colorMode(p.HSB, 360, 100, 100, 255);
           p.background(0);
@@ -255,7 +268,7 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
         };
 
         p.windowResized = () => {
-          p.resizeCanvas(p.windowWidth, p.windowHeight);
+          p.resizeCanvas(p.windowWidth, p.windowHeight - 300);
         };
 
         p.mouseClicked = () => {
@@ -299,15 +312,17 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
       const p = p5InstanceRef.current;
       
       let startX, startY;
+      const isClickFirework = !!fireworkEvent.clickPosition;
+      
       if (fireworkEvent.clickPosition) {
         startX = fireworkEvent.clickPosition.x;
         startY = fireworkEvent.clickPosition.y;
       } else {
         startX = position === 'center' ? p.width / 2 : p.random(p.width * 0.2, p.width * 0.8);
-        startY = p.height - 50;
+        startY = p.height;
       }
       
-      fireworksRef.current.push(new Firework(p, startX, startY, fireworkEvent.vibe, fireworkEvent.audioDuration));
+      fireworksRef.current.push(new Firework(p, startX, startY, fireworkEvent.vibe, fireworkEvent.audioDuration, isClickFirework));
       lastEventIdRef.current = fireworkEvent.id;
     }
   }, [fireworkEvent, position]);

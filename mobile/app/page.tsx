@@ -166,7 +166,7 @@ export default function Home() {
             Vibes = Fireworks = Sound. Your heart dances in the sky.
           </p>
           <p className={styles.footerCredit}>
-            Created with ❤️ for Yuru Vibe Coding Hackathon
+            Created with ❤️ for Supabase Launch Week 15 hackathon
           </p>
         </div>
       </footer>
