@@ -245,7 +245,7 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
       }
     };
 
-    p.windowResized = (event?: UIEvent) => {
+    p.windowResized = () => {
       p.resizeCanvas(p.windowWidth, p.windowHeight);
     };
 
@@ -269,7 +269,7 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
     };
 
 
-  }, [vibe, fireworkEvent?.audioDuration]);
+  }, [vibe]);
 
   // 新しい花火イベントを監視
   useEffect(() => {

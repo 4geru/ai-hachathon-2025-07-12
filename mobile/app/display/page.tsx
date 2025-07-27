@@ -62,6 +62,7 @@ export default function DisplayPage() {
     vibe: FireworkEvent['vibe'];
     timestamp: number;
     audioDuration?: number;
+    clickPosition?: { x: number; y: number };
   } | null>(null);
   const lastTriggerTime = useRef(0);
   // Web Audio API 用の参照
@@ -264,6 +265,7 @@ export default function DisplayPage() {
     return () => {
       window.removeEventListener('fireworkExploded', playFireworkExplosionSound);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioEnabled]);
 
   /**
@@ -355,8 +357,9 @@ export default function DisplayPage() {
 
   // クリック花火打ち上げイベントを監視
   useEffect(() => {
-    const handleClickLaunch = async (event: CustomEvent) => {
-      const { id, vibe, x, y } = event.detail;
+    const handleClickLaunch = async (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { id, vibe, x, y } = customEvent.detail;
       console.log('クリック花火打ち上げ:', id, 'at position:', x, y);
       await launchCompleteFirework({ 
         id, 
@@ -365,10 +368,11 @@ export default function DisplayPage() {
       });
     };
 
-    window.addEventListener('fireworkClickLaunch', handleClickLaunch as EventListener);
+    window.addEventListener('fireworkClickLaunch', handleClickLaunch);
     return () => {
-      window.removeEventListener('fireworkClickLaunch', handleClickLaunch as EventListener);
+      window.removeEventListener('fireworkClickLaunch', handleClickLaunch);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioEnabled]);
 
   useEffect(() => {
@@ -512,50 +516,50 @@ export default function DisplayPage() {
       <P5Fireworks fireworkEvent={fireworkEvent} />
       <div className="absolute top-4 left-4 text-white bg-black bg-opacity-50 p-4 rounded-lg">
         <h1 className="text-3xl font-bold">Sky Canvas</h1>
-        <p>スマートフォンを傾けて、あなただけの花火を打ち上げよう！</p>
+        <p>Tilt your smartphone to launch your own fireworks!</p>
         <div className="mt-4 p-4 border border-gray-600 rounded-lg">
-          <p className="text-lg">操作用URL:</p>
+          <p className="text-lg">Control URL:</p>
           {phoneUrl ? (
             <a href={phoneUrl} target="_blank" rel="noopener noreferrer" className="text-xl text-cyan-400 hover:underline">
               {phoneUrl}
             </a>
           ) : (
-            <p>URLを生成中...</p>
+            <p>Generating URL...</p>
           )}
         </div>
         {!audioEnabled && (
           <div className="mt-4 p-4 bg-yellow-900 border border-yellow-600 rounded-lg">
-            <p className="font-bold">画面をクリックして音声を有効にしてください</p>
+            <p className="font-bold">Click the screen to enable audio</p>
           </div>
         )}
         {audioEnabled && (
           <div className="mt-4 p-4 bg-green-900 border border-green-600 rounded-lg">
-            <p className="font-bold text-green-200">🎵 音声システム有効</p>
-            <p className="text-green-300 text-sm">Web Audio API使用</p>
-            <p className="text-green-300 text-sm">爆発同期遅延: {explosionSyncDelay}ms</p>
-            <p className="text-green-300 text-sm">ヒュー音: sounds_launch.mp3</p>
+            <p className="font-bold text-green-200">🎵 Audio System Enabled</p>
+            <p className="text-green-300 text-sm">Using Web Audio API</p>
+            <p className="text-green-300 text-sm">Explosion sync delay: {explosionSyncDelay}ms</p>
+            <p className="text-green-300 text-sm">Whoosh sound: sounds_launch.mp3</p>
             <div className="mt-2 space-x-2 flex flex-wrap gap-2">
               <button 
                 onClick={() => {
-                  console.log('「ヒュー音のみ」ボタンがクリックされました');
+                  console.log('"Whoosh only" button clicked');
                   playFireworkLaunchSound();
                 }}
                 className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded text-sm"
               >
-                ヒュー音のみ
+                Whoosh Only
               </button>
               <button 
                 onClick={() => {
-                  console.log('「爆発音のみ」ボタンがクリックされました');
+                  console.log('"Explosion only" button clicked');
                   playFireworkExplosionSound();
                 }}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded text-sm"
               >
-                爆発音のみ
+                Explosion Only
               </button>
               <button 
                 onClick={() => {
-                  console.log('「完全テスト」ボタンがクリックされました');
+                  console.log('"Complete test" button clicked');
                   // 完全な花火テスト（統合関数使用）
                   launchCompleteFirework({
                     id: `test-${Date.now()}`,
@@ -564,7 +568,7 @@ export default function DisplayPage() {
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded text-sm"
               >
-                完全テスト
+                Complete Test
               </button>
             </div>
           </div>
@@ -576,19 +580,19 @@ export default function DisplayPage() {
             {connectionStatus === 'connected' && (
               <>
                 <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-green-200 text-sm">リアルタイム接続中</span>
+                <span className="text-green-200 text-sm">Real-time connected</span>
               </>
             )}
             {connectionStatus === 'connecting' && (
               <>
                 <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
-                <span className="text-yellow-200 text-sm">接続中...</span>
+                <span className="text-yellow-200 text-sm">Connecting...</span>
               </>
             )}
             {(connectionStatus === 'disconnected' || connectionStatus === 'error') && (
               <>
                 <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                <span className="text-orange-200 text-sm">ポーリングモード</span>
+                <span className="text-orange-200 text-sm">Polling mode</span>
               </>
             )}
           </div>
@@ -597,11 +601,11 @@ export default function DisplayPage() {
       <div className="absolute bottom-4 left-4 text-white text-xs bg-black bg-opacity-50 p-2 rounded">
         {lastFireworkEvent && (
           <div>
-            <p>最新の花火: {lastFireworkEvent.userId} さんが {lastFireworkEvent.type} で発火</p>
+            <p>Latest firework: {lastFireworkEvent.userId} launched with {lastFireworkEvent.type}</p>
             <p>
-              色: {lastFireworkEvent.vibe.color} |
-              サイズ: {lastFireworkEvent.vibe.size.toFixed(1)} |
-              パターン: {lastFireworkEvent.vibe.pattern}
+              Color: {lastFireworkEvent.vibe.color} |
+              Size: {lastFireworkEvent.vibe.size.toFixed(1)} |
+              Pattern: {lastFireworkEvent.vibe.pattern}
             </p>
           </div>
         )}
