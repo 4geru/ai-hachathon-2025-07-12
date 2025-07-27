@@ -10,9 +10,14 @@ export default function PhonePage() {
   const [orientationPermissionGranted, setOrientationPermissionGranted] = useState<boolean>(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [fireworkSentMessage, setFireworkSentMessage] = useState<boolean>(false);
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
   const lastMessageTime = useRef(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const requestPermission = async () => {
+    // Audio permission - must be done first with user interaction
+    await enableAudio();
+
     // DeviceMotionEvent permission
     if (typeof (DeviceMotionEvent as unknown as { requestPermission?: () => Promise<string> }).requestPermission === 'function') {
       try {
@@ -57,6 +62,29 @@ export default function PhonePage() {
     }
   };
 
+  // 音声を有効にする関数
+  const enableAudio = async () => {
+    try {
+      // 音声ファイルを初期化
+      if (!audioRef.current) {
+        audioRef.current = new Audio('/sounds.mp3');
+        audioRef.current.volume = 0.5;
+        audioRef.current.preload = 'auto';
+      }
+
+      // 音声を一瞬再生してから止める（音声コンテキストを有効化）
+      audioRef.current.volume = 0;
+      await audioRef.current.play();
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.volume = 0.5;
+      setAudioEnabled(true);
+      console.log('Phone: 音声が有効になりました');
+    } catch (error) {
+      console.error('Phone: 音声有効化エラー:', error);
+    }
+  };
+
   useEffect(() => {
     if (permissionGranted) {
       const handleDeviceMotion = (event: DeviceMotionEvent) => {
@@ -97,6 +125,17 @@ export default function PhonePage() {
               lastMessageTime.current = currentTime;
               setTimeout(() => setFireworkSentMessage(false), 1500);
               console.log("Firework trigger condition met on phone.");
+
+              // 音声再生（音声が有効になっている場合）
+              if (audioEnabled && audioRef.current) {
+                try {
+                  audioRef.current.currentTime = 0;
+                  audioRef.current.play();
+                  console.log('Phone: 花火音声再生成功');
+                } catch (error) {
+                  console.error('Phone: 花火音声再生エラー:', error);
+                }
+              }
 
               // 花火のvibeデータを生成
               const fireworkVibe = {
@@ -168,6 +207,16 @@ export default function PhonePage() {
     }
   }, [orientationPermissionGranted]);
 
+  // クリーンアップ
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     <div className="relative min-h-screen">
       {/* 花火のバックグラウンド */}
@@ -179,13 +228,19 @@ export default function PhonePage() {
       <div className="relative z-10 flex min-h-screen flex-col items-center justify-center p-4">
         <div className="bg-black bg-opacity-80 rounded-lg p-6 text-white border border-gray-300 shadow-2xl">
           <h1 className="text-2xl font-bold mb-4 text-center drop-shadow-lg">スマートフォンを傾けてください</h1>
-          {(!permissionGranted || !orientationPermissionGranted) && (
-            <button
-              onClick={requestPermission}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg border-2 border-white border-opacity-30 transition-all duration-300 transform hover:scale-105 w-full"
-            >
-              センサーの許可をリクエスト
-            </button>
+          {(!permissionGranted || !orientationPermissionGranted || !audioEnabled) && (
+            <div className="space-y-3">
+              <button
+                onClick={requestPermission}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg border-2 border-white border-opacity-30 transition-all duration-300 transform hover:scale-105 w-full"
+              >
+                センサーと音声の許可をリクエスト
+              </button>
+              <div className="text-sm text-gray-300 text-center">
+                <p>🎵 花火と一緒に音声も再生されます</p>
+                <p>📱 センサーと音声の許可が必要です</p>
+              </div>
+            </div>
           )}
           {permissionError && (
             <div className="mt-4 p-3 bg-red-500 bg-opacity-20 border border-red-400 rounded-lg">
@@ -235,11 +290,21 @@ export default function PhonePage() {
             </div>
           )}
           
+          {/* 音声状態表示 */}
+          {audioEnabled && (
+            <div className="mt-4 p-3 bg-green-500 bg-opacity-20 border border-green-400 rounded-lg">
+              <p className="text-green-200 text-center">🎵 音声が有効になりました</p>
+            </div>
+          )}
+
           {(permissionGranted || orientationPermissionGranted) && (
             <div className="mt-4 text-center">
               {fireworkSentMessage && (
                 <div className="mt-4 p-3 bg-green-500 bg-opacity-30 border border-green-400 rounded-lg">
                   <p className="text-green-200 text-xl font-bold animate-bounce">🎆 花火発火！ 🎆</p>
+                  {audioEnabled && (
+                    <p className="text-green-200 text-sm">🎵 音声再生中</p>
+                  )}
                 </div>
               )}
               <div className="mt-3 p-2 bg-gray-500 bg-opacity-20 border border-gray-400 rounded-lg">

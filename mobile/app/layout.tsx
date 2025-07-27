@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,16 +17,17 @@ export const metadata: Metadata = {
     title: "Sky Canvas - 空に描く、あなたの創造力",
     description: "あなたの感情が花火になる。音楽と光が織りなす全く新しい体験。",
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   robots: {
     index: true,
     follow: true,
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -45,6 +46,7 @@ export default function RootLayout({
         />
         <meta name="theme-color" content="#1a1a2e" />
         <meta name="msapplication-TileColor" content="#1a1a2e" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Sky Canvas" />

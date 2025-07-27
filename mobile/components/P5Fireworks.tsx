@@ -31,11 +31,6 @@ interface IParticleData {
   saturation: number;
   brightness: number;
   exploded: boolean;
-  // 多段階破裂のための追加プロパティ
-  isSecondaryTrigger?: boolean; // 二次爆発をトリガーするパーティクルか
-  secondaryExplosionDelay?: number; // 二次爆発までの遅延時間
-  hasTriggeredSecondary?: boolean; // 二次爆発が既にトリガーされたか
-  isChildParticle?: boolean; // 二次爆発で生成されたパーティクルか
 }
 
 class Particle implements IParticleData {
@@ -48,12 +43,8 @@ class Particle implements IParticleData {
   saturation: number;
   brightness: number;
   exploded: boolean;
-  isSecondaryTrigger?: boolean;
-  secondaryExplosionDelay?: number;
-  hasTriggeredSecondary?: boolean;
-  isChildParticle?: boolean;
 
-  constructor(p: p5, x: number, y: number, hue: number, lifespan: number, exploded: boolean = false, isSecondaryTrigger: boolean = false, secondaryExplosionDelay: number = 0, isChildParticle: boolean = false) {
+  constructor(p: p5, x: number, y: number, hue: number, lifespan: number, exploded: boolean = false) {
     this.p = p;
     this.pos = p.createVector(x, y);
     this.vel = p.createVector(0, 0);
@@ -63,10 +54,6 @@ class Particle implements IParticleData {
     this.saturation = 100;
     this.brightness = 100;
     this.exploded = exploded;
-    this.isSecondaryTrigger = isSecondaryTrigger;
-    this.secondaryExplosionDelay = secondaryExplosionDelay;
-    this.hasTriggeredSecondary = false;
-    this.isChildParticle = isChildParticle;
 
     if (exploded) {
       this.vel = p5.Vector.random2D().mult(p.random(1, 10));
@@ -92,17 +79,8 @@ class Particle implements IParticleData {
       this.vel.add(this.acc);
       this.pos.add(this.vel);
       this.acc.mult(0);
-      // 二次爆発をトリガーするロジック
-      if (this.isSecondaryTrigger && !this.hasTriggeredSecondary && this.lifespan <= (255 - this.secondaryExplosionDelay! * 100)) { // 遅延時間に応じてライフスパンを調整
-        // 二次爆発のトリガー
-        window.dispatchEvent(new CustomEvent('secondaryExplosion', {
-          detail: { x: this.pos.x, y: this.pos.y, hue: this.hue }
-        }));
-        this.hasTriggeredSecondary = true;
-      }
-      // 音声の長さに基づいて減衰率を調整（デフォルトは3）
-      const decayRate = 3;
-      this.lifespan -= this.isChildParticle ? decayRate + 1 : decayRate;
+      // 通常の減衰率
+      this.lifespan -= 3;
     }
   }
 
@@ -172,8 +150,18 @@ class Firework {
     if (!this.exploded) {
       this.firework.update();
       if (this.firework.vel.y >= 0) { // When launch particle starts falling, explode
-        this.explode(this.firework.pos.x, this.firework.pos.y, this.hue, false);
+        this.explode(this.firework.pos.x, this.firework.pos.y, this.hue);
         this.exploded = true;
+        
+        // 爆発タイミングで音声再生イベントを発行
+        window.dispatchEvent(new CustomEvent('fireworkExploded', {
+          detail: { 
+            id: `explosion-${Date.now()}-${Math.random()}`,
+            x: this.firework.pos.x, 
+            y: this.firework.pos.y,
+            hue: this.hue
+          }
+        }));
       }
     }
 
@@ -194,12 +182,11 @@ class Firework {
     }
   }
 
-  // explodeメソッドを拡張して、パターンとサイズに対応
-  explode(x: number, y: number, baseHue: number, isSecondary: boolean = false) {
-    let numParticles = isSecondary ? 20 : 40; // パーティクル数を大幅に削減（clash対策）
+  // explodeメソッド：パターンとサイズに対応
+  explode(x: number, y: number, baseHue: number) {
+    let numParticles = 40; // 基本パーティクル数
     // 音声の長さに基づいてライフスパンを計算（フレームレート50fps）
-    const baseLifespan = this.audioDuration ? Math.floor(this.audioDuration * 50) : 255;
-    const lifespan = isSecondary ? Math.floor(baseLifespan * 0.4) : baseLifespan;
+    const lifespan = this.audioDuration ? Math.floor(this.audioDuration * 50) : 255;
 
     // パターンに応じてパーティクル数を調整
     if (this.pattern === 'fountain') {
@@ -210,10 +197,7 @@ class Firework {
 
     for (let i = 0; i < numParticles; i++) {
       const particleHue = (baseHue + this.p.random(-30, 30)) % 360;
-      const isSecondaryTrigger = !isSecondary && this.p.random() < 0.05; // 二次爆発確率を半減（clash対策）
-      const secondaryDelay = isSecondaryTrigger ? this.p.random(0.3, 1.0) : 0;
-
-      const particle = new Particle(this.p, x, y, particleHue < 0 ? particleHue + 360 : particleHue, lifespan, true, isSecondaryTrigger, secondaryDelay, isSecondary);
+      const particle = new Particle(this.p, x, y, particleHue < 0 ? particleHue + 360 : particleHue, lifespan, true);
       
       // パターンに応じて初期速度を調整
       if (this.pattern === 'fountain') {
@@ -260,7 +244,7 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
       }
     };
 
-    p.windowResized = () => {
+    p.windowResized = (event?: UIEvent) => {
       p.resizeCanvas(p.windowWidth, p.windowHeight);
     };
 
@@ -270,19 +254,6 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
       }
     };
 
-    // カスタムイベントリスナーを追加して二次爆発を処理
-    window.addEventListener('secondaryExplosion', (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const { x, y, hue } = customEvent.detail;
-      const parentFirework = fireworks.current.find(fw => fw.exploded && fw.particles.some(p => p.pos.x === x && p.pos.y === y));
-      if (parentFirework) {
-        parentFirework.explode(x, y, hue, true);
-      } else {
-        const newFirework = new Firework(p, x, y, vibe, fireworkEvent?.audioDuration);
-        newFirework.explode(x, y, hue, true);
-        fireworks.current.push(newFirework);
-      }
-    });
 
   }, [vibe, fireworkEvent?.audioDuration]);
 
