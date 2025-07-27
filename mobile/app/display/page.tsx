@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/utils/supabase';
 import dynamic from 'next/dynamic';
+import SkyCanvasHeader from '@/components/SkyCanvasHeader';
 
 // P5Fireworksを動的にインポートしてSSRを無効化
 const P5Fireworks = dynamic(() => import('@/components/P5Fireworks'), {
@@ -513,7 +514,8 @@ export default function DisplayPage() {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden" onClick={enableAudio}>
-      <div className="absolute top-4 left-4 text-white bg-black bg-opacity-50 p-4 rounded-lg">
+      <SkyCanvasHeader variant="display" />
+      {/* <div className="absolute top-4 left-4 text-white bg-black bg-opacity-50 p-4 rounded-lg">
         <h1 className="text-3xl font-bold">Sky Canvas</h1>
         <p>Tilt your smartphone to launch your own fireworks!</p>
         <div className="mt-4 p-4 border border-gray-600 rounded-lg">
@@ -573,7 +575,6 @@ export default function DisplayPage() {
           </div>
         )}
         
-        {/* 接続状態表示 */}
         <div className="mt-4 p-3 bg-gray-900 border border-gray-600 rounded-lg">
           <div className="flex items-center space-x-2">
             {connectionStatus === 'connected' && (
@@ -596,7 +597,7 @@ export default function DisplayPage() {
             )}
           </div>
         </div>
-      </div>
+      </div> */}
       <P5Fireworks key="single-fireworks" fireworkEvent={fireworkEvent} />
     </div>
   );

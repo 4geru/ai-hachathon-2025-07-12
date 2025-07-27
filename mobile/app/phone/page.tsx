@@ -81,6 +81,86 @@ export default function PhonePage() {
   };
 
   /**
+   * 手動花火発射関数 - ボタンクリック用
+   */
+  const launchManualFirework = async () => {
+    console.log('=== 手動花火発射開始 ===');
+    
+    const timestamp = Date.now();
+    
+    // 連続発射防止
+    if ((timestamp - lastMessageTime.current) < 1000) {
+      console.log('手動発射: クールダウン中');
+      return false;
+    }
+    
+    // 発射実行
+    setFireworkSentMessage(true);
+    lastMessageTime.current = timestamp;
+    setTimeout(() => setFireworkSentMessage(false), 3000);
+    
+    // スマホ側音声再生
+    if (audioEnabled && audioRef.current) {
+      try {
+        audioRef.current.currentTime = 0;
+        await audioRef.current.play();
+        console.log('手動発射: スマホ側音声再生成功');
+      } catch (error) {
+        console.error('手動発射: スマホ側音声再生エラー:', error);
+      }
+    }
+    
+    // 花火データ作成（手動発射用の特別な設定）
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff'];
+    const patterns = ['burst', 'ring', 'spiral'];
+    
+    const fireworkVibe = {
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: 60 + Math.random() * 40, // 60-100のランダムサイズ
+      pattern: patterns[Math.floor(Math.random() * patterns.length)],
+      seed: Math.floor(Math.random() * 1000)
+    };
+    
+    // スマホ側でも花火を表示
+    setPhoneFireworkEvent({
+      id: `manual-${timestamp}`,
+      vibe: fireworkVibe,
+      timestamp: timestamp,
+      audioDuration: 4
+    });
+    
+    // ディスプレイ側に送信
+    const fireworkEvent = {
+      user_id: 'manual-phone-user',
+      event_type: 'gesture',
+      event_data: {
+        type: 'tap',
+        direction: 'up',
+        intensity: 1.0,
+        timestamp: timestamp
+      },
+      vibe: fireworkVibe
+    };
+    
+    try {
+      const { error } = await supabase
+        .from('firework_events')
+        .insert(fireworkEvent);
+      
+      if (error) {
+        console.error('手動発射: Supabase送信エラー:', error);
+        return false;
+      } else {
+        console.log('手動発射: 花火イベント送信成功:', fireworkEvent);
+        return true;
+      }
+    } catch (error) {
+      console.error('手動発射: 送信プロセスエラー:', error);
+      return false;
+    }
+  };
+
+  /**
    * 花火発射メイン関数 - わかりやすく構造化
    */
   const launchFireworkFromPhone = async (accelerationData: { x: number; y: number; z: number }, timestamp: number) => {
@@ -274,11 +354,10 @@ export default function PhonePage() {
       <SkyCanvasHeader variant="phone" />
             
       {/* UI コンテンツ - ヘッダー分の余白を追加 */}
-      <div className="relative z-10 flex min-h-screen flex-col items-center justify-center p-4 pt-20">
+      {/* <div className="relative z-10 flex min-h-screen flex-col items-center justify-center p-4 pt-20">
         <div className="bg-black bg-opacity-70 rounded-lg p-6 text-white border border-gray-300 shadow-2xl max-w-md w-full">
           <p className="text-center text-lg mb-4">Tilt your smartphone to launch fireworks!</p>
           
-          {/* デバッグモード切り替えボタン */}
           <div className="flex justify-center mb-4">
             <button
               onClick={() => setDebugMode(!debugMode)}
@@ -308,30 +387,19 @@ export default function PhonePage() {
             </div>
           )}
           
-          {/* デバッグ情報 - 切り替え可能 */}
           {debugMode && (
             <>
-              {/* 加速度センサーの表示 */}
               {permissionGranted && (
-                <div className="mt-4 p-4 bg-blue-500 bg-opacity-20 border border-blue-400 rounded-lg">
-                  <h2 className="text-lg font-semibold mb-3 text-center text-blue-200">Acceleration Sensor</h2>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-white bg-opacity-10 p-2 rounded">
-                      <p className="text-xs text-gray-300">X-axis</p>
-                      <p className="text-lg font-bold">{acceleration.x !== null ? acceleration.x.toFixed(2) : 'N/A'}</p>
-                    </div>
-                    <div className="bg-white bg-opacity-10 p-2 rounded">
-                      <p className="text-xs text-gray-300">Y-axis</p>
-                      <p className="text-lg font-bold">{acceleration.y !== null ? acceleration.y.toFixed(2) : 'N/A'}</p>
-                    </div>
-                    <div className="bg-white bg-opacity-10 p-2 rounded">
-                      <p className="text-xs text-gray-300">Z-axis</p>
-                      <p className="text-lg font-bold">{acceleration.z !== null ? acceleration.z.toFixed(2) : 'N/A'}</p>
-                    </div>
+                <div className="mt-2 p-2 bg-blue-500 bg-opacity-20 border border-blue-400 rounded-lg">
+                  <h2 className="text-base font-semibold mb-1 text-center text-blue-200">Acceleration Sensor</h2>
+                  <div className="flex justify-around text-xs text-gray-300">
+                    <p>X-axis: {acceleration.x !== null ? acceleration.x.toFixed(2) : 'N/A'}</p>
+                    <p>Y-axis: {acceleration.y !== null ? acceleration.y.toFixed(2) : 'N/A'}</p>
+                    <p>Z-axis: {acceleration.z !== null ? acceleration.z.toFixed(2) : 'N/A'}</p>
                   </div>
                   {acceleration.x !== null && acceleration.y !== null && (
-                    <div className="mt-2 text-center">
-                      <p className="text-yellow-200 text-sm">
+                    <div className="mt-1 text-center">
+                      <p className="text-yellow-200 text-xs">
                         Tilt strength: {Math.sqrt(acceleration.x ** 2 + acceleration.y ** 2).toFixed(2)} (Launch threshold: 2.5)
                       </p>
                     </div>
@@ -339,37 +407,25 @@ export default function PhonePage() {
                 </div>
               )}
               
-              {/* 角度センサーの表示 */}
               {orientationPermissionGranted && (
-                <div className="mt-4 p-4 bg-purple-500 bg-opacity-20 border border-purple-400 rounded-lg">
-                  <h2 className="text-lg font-semibold mb-3 text-center text-purple-200">Orientation Sensor</h2>
-                  <div className="space-y-2">
-                    <div className="bg-white bg-opacity-10 p-2 rounded flex justify-between">
-                      <span className="text-sm text-gray-300">Alpha (Z-axis):</span>
-                      <span className="font-bold">{orientation.alpha !== null ? orientation.alpha.toFixed(2) : 'N/A'}°</span>
-                    </div>
-                    <div className="bg-white bg-opacity-10 p-2 rounded flex justify-between">
-                      <span className="text-sm text-gray-300">Beta (X-axis):</span>
-                      <span className="font-bold">{orientation.beta !== null ? orientation.beta.toFixed(2) : 'N/A'}°</span>
-                    </div>
-                    <div className="bg-white bg-opacity-10 p-2 rounded flex justify-between">
-                      <span className="text-sm text-gray-300">Gamma (Y-axis):</span>
-                      <span className="font-bold">{orientation.gamma !== null ? orientation.gamma.toFixed(2) : 'N/A'}°</span>
-                    </div>
+                <div className="mt-2 p-2 bg-purple-500 bg-opacity-20 border border-purple-400 rounded-lg">
+                  <h2 className="text-base font-semibold mb-1 text-center text-purple-200">Orientation Sensor</h2>
+                  <div className="flex justify-around text-xs text-gray-300">
+                    <p>Alpha (Z-axis): {orientation.alpha !== null ? orientation.alpha.toFixed(2) + '°' : 'N/A'}</p>
+                    <p>Beta (X-axis): {orientation.beta !== null ? orientation.beta.toFixed(2) + '°' : 'N/A'}</p>
+                    <p>Gamma (Y-axis): {orientation.gamma !== null ? orientation.gamma.toFixed(2) + '°' : 'N/A'}</p>
                   </div>
                 </div>
               )}
             </>
           )}
           
-          {/* 音声状態表示 */}
           {audioEnabled && (
             <div className="mt-4 p-3 bg-green-500 bg-opacity-20 border border-green-400 rounded-lg">
               <p className="text-green-200 text-center">🎵 Audio enabled successfully</p>
             </div>
           )}
 
-          {/* シンプルな状態表示 - 視覚的フィードバック強化 */}
           {(permissionGranted || orientationPermissionGranted) && (
             <div className="mt-4 text-center">
               {fireworkSentMessage ? (
@@ -397,7 +453,6 @@ export default function PhonePage() {
                     {isReadyToLaunch ? 'Tilt a bit more to launch!' : 'Shake your smartphone to launch fireworks'}
                   </p>
                   
-                  {/* リアルタイム傾き強度表示 */}
                   <div className="mt-2">
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="text-gray-300">Tilt Strength</span>
@@ -425,11 +480,86 @@ export default function PhonePage() {
             </div>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* 花火のバックグラウンド */}
       <div className="absolute inset-0 z-0">
         <P5Fireworks key="phone-fireworks" fireworkEvent={phoneFireworkEvent} position="center" />
+      </div>
+
+      {/* 底部固定の花火ボタン */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-black via-black/80 to-transparent">
+        <div className="max-w-md mx-auto">
+          {/* 権限リクエストボタン（必要時のみ表示） */}
+          {(!permissionGranted || !orientationPermissionGranted || !audioEnabled) && (
+            <div className="mb-4">
+              <button
+                onClick={requestPermission}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg border-2 border-white border-opacity-30 transition-all duration-300 transform hover:scale-105 w-full"
+              >
+                🎵 Enable Audio & Sensors 🎵
+              </button>
+              <p className="text-xs text-gray-300 text-center mt-2">
+                Tap to enable audio and motion sensors
+              </p>
+            </div>
+          )}
+
+          {/* メイン花火ボタン */}
+          <button
+            onClick={launchManualFirework}
+            disabled={fireworkSentMessage}
+            className={`bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-6 px-8 rounded-full shadow-lg border-2 border-white border-opacity-30 transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:opacity-50 w-full text-xl ${
+              fireworkSentMessage ? 'animate-pulse' : ''
+            }`}
+          >
+            {fireworkSentMessage ? '🎆 Launching...' : '🎆 Launch Firework 🎆'}
+          </button>
+          
+          {/* ステータス表示 */}
+          <div className="mt-3 text-center">
+            {fireworkSentMessage ? (
+              <p className="text-green-200 text-sm animate-pulse">
+                ✨ Firework launched successfully! ✨
+              </p>
+            ) : (
+              <p className="text-gray-300 text-sm">
+                Tap to launch colorful fireworks on the big screen!
+              </p>
+            )}
+            
+            {/* 傾きセンサーの簡易フィードバック */}
+            {(permissionGranted || orientationPermissionGranted) && (
+              <div className="mt-2">
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="text-xs text-gray-400">Tilt:</span>
+                  <div className="w-20 bg-gray-600 rounded-full h-1">
+                    <div 
+                      className={`h-1 rounded-full transition-all duration-200 ${
+                        tiltStrength >= 2.5 ? 'bg-red-400' :
+                        tiltStrength >= 2.0 ? 'bg-yellow-400' :
+                        'bg-blue-400'
+                      }`}
+                      style={{ width: `${Math.min((tiltStrength / 2.5) * 100, 100)}%` }}
+                    ></div>
+                  </div>
+                  <span className={`text-xs ${
+                    tiltStrength >= 2.5 ? 'text-red-200' :
+                    tiltStrength >= 2.0 ? 'text-yellow-200' :
+                    'text-gray-400'
+                  }`}>
+                    {tiltStrength.toFixed(1)}
+                  </span>
+                </div>
+                {tiltStrength >= 2.5 && (
+                  <p className="text-xs text-red-200 mt-1 animate-pulse">
+                    🔥 Auto-launch ready! Keep tilting to launch automatically
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

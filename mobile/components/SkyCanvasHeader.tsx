@@ -24,7 +24,7 @@ export default function SkyCanvasHeader({
             <div>
               <h1 className="text-xl font-bold text-white">🎆 Sky Canvas 🎆</h1>
               <p className="text-xs text-gray-300">
-                {variant === 'display' ? '空に描く、あなたの創造力' : 'スマートフォンコントローラー'}
+                {variant === 'display' ? 'Paint your creativity in the sky' : 'Shake your smartphone to launch fireworks'}
               </p>
             </div>
           </div>
@@ -34,7 +34,7 @@ export default function SkyCanvasHeader({
             {/* Phone URL表示 (display版のみ) */}
             {variant === 'display' && phoneUrl && (
               <div className="hidden md:block text-right">
-                <p className="text-xs text-gray-400">操作用URL:</p>
+                <p className="text-xs text-gray-400">Control URL:</p>
                 <a 
                   href={phoneUrl} 
                   target="_blank" 
@@ -52,28 +52,23 @@ export default function SkyCanvasHeader({
                 {connectionStatus === 'connected' && (
                   <>
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-green-200 text-sm hidden sm:inline">接続中</span>
+                    <span className="text-green-200 text-sm hidden sm:inline">Connected</span>
                   </>
                 )}
                 {connectionStatus === 'connecting' && (
                   <>
                     <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                    <span className="text-yellow-200 text-sm hidden sm:inline">接続中...</span>
+                    <span className="text-yellow-200 text-sm hidden sm:inline">Connecting...</span>
                   </>
                 )}
                 {(connectionStatus === 'disconnected' || connectionStatus === 'error') && (
                   <>
                     <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <span className="text-orange-200 text-sm hidden sm:inline">オフライン</span>
+                    <span className="text-orange-200 text-sm hidden sm:inline">Offline</span>
                   </>
                 )}
               </div>
             )}
-
-            {/* バージョン表示 */}
-            <div className="text-xs text-gray-500">
-              v1.0
-            </div>
           </div>
         </div>
 
