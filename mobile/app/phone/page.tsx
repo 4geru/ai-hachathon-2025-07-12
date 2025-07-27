@@ -272,12 +272,7 @@ export default function PhonePage() {
     <div className="relative min-h-screen">
       {/* 固定ヘッダー */}
       <SkyCanvasHeader variant="phone" />
-      
-      {/* 花火のバックグラウンド */}
-      <div className="absolute inset-0 z-0">
-        <P5Fireworks fireworkEvent={phoneFireworkEvent} position="center" />
-      </div>
-      
+            
       {/* UI コンテンツ - ヘッダー分の余白を追加 */}
       <div className="relative z-10 flex min-h-screen flex-col items-center justify-center p-4 pt-20">
         <div className="bg-black bg-opacity-70 rounded-lg p-6 text-white border border-gray-300 shadow-2xl max-w-md w-full">
@@ -430,6 +425,11 @@ export default function PhonePage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* 花火のバックグラウンド */}
+      <div className="absolute inset-0 z-0">
+        <P5Fireworks fireworkEvent={phoneFireworkEvent} position="center" />
       </div>
     </div>
   );

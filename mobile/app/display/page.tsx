@@ -513,7 +513,6 @@ export default function DisplayPage() {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden" onClick={enableAudio}>
-      <P5Fireworks fireworkEvent={fireworkEvent} />
       <div className="absolute top-4 left-4 text-white bg-black bg-opacity-50 p-4 rounded-lg">
         <h1 className="text-3xl font-bold">Sky Canvas</h1>
         <p>Tilt your smartphone to launch your own fireworks!</p>
@@ -598,18 +597,7 @@ export default function DisplayPage() {
           </div>
         </div>
       </div>
-      <div className="absolute bottom-4 left-4 text-white text-xs bg-black bg-opacity-50 p-2 rounded">
-        {lastFireworkEvent && (
-          <div>
-            <p>Latest firework: {lastFireworkEvent.userId} launched with {lastFireworkEvent.type}</p>
-            <p>
-              Color: {lastFireworkEvent.vibe.color} |
-              Size: {lastFireworkEvent.vibe.size.toFixed(1)} |
-              Pattern: {lastFireworkEvent.vibe.pattern}
-            </p>
-          </div>
-        )}
-      </div>
+      <P5Fireworks fireworkEvent={fireworkEvent} />
     </div>
   );
 } 
