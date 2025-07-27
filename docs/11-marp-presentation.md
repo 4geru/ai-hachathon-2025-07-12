@@ -26,6 +26,18 @@ style: |
 
 ---
 
+# デモンストレーション
+## 🎆 実際の「Sky Canvas」の世界を体験しよう！
+
+### 🎵 Vibes体験のハイライト
+*   **📱 Phone ページ**: あなたのVibes（感情）をセンサーで感知 + 音楽連動発射
+*   **🖥️ Display ページ**: 音楽に合わせた花火シンフォニーの**リアルタイム表示**
+*   **🔄 感情同期**: 複数人のVibesが融合した集合的花火アート
+*   **🎼 音楽連動**: BGMのビート・リズム・メロディーと完全同期した視覚演出
+*   **📳 触覚フィードバック**: 音楽・花火・振動が織りなす全身体験
+
+---
+
 # 🚀 ハッカソンでの挑戦
 ## **AI駆動開発 × リアルタイム体験** の融合
 
@@ -34,8 +46,6 @@ style: |
 - **リアルタイム通信**: 瞬時の体験共有
 - **センサー技術**: 直感的なインタラクション
 - **クリエイティブ表現**: 新しい芸術体験の創造
-
-
 
 ---
 
@@ -62,6 +72,7 @@ style: |
 - **音響効果**: 花火の種類に応じた爆発音・余韻音
 - **音楽連動**: BGMのビートに合わせた自動発射
 - **振動フィードバック**: 爆発の瞬間にデバイスが振動
+
 ---
 # 🎵 Vibes = 花火 = 音 の融合体験
 ## **感情と視覚と聴覚を統合した新しいエンターテインメント**
@@ -103,18 +114,6 @@ style: |
 *   **パフォーマンス**: **60%** の負荷軽減を達成
 *   **スケーラビリティ**: 100+ 同時接続対応
 
----
-
-# デモンストレーション
-## 🎆 実際の「Sky Canvas」の世界を体験しよう！
-
-### 🎵 Vibes体験のハイライト
-*   **📱 Phone ページ**: あなたのVibes（感情）をセンサーで感知 + 音楽連動発射
-*   **🖥️ Display ページ**: 音楽に合わせた花火シンフォニーの**リアルタイム表示**
-*   **🔄 感情同期**: 複数人のVibesが融合した集合的花火アート
-*   **🎼 音楽連動**: BGMのビート・リズム・メロディーと完全同期した視覚演出
-*   **📳 触覚フィードバック**: 音楽・花火・振動が織りなす全身体験
-
 <!--
 🎵 Vibes体験デモポイント：
 - スマートフォンを振って「あなたのVibes」を表現
@@ -123,6 +122,36 @@ style: |
 - 音楽・花火・振動の三位一体体験
 - 感情が可視化される瞬間の感動
 -->
+
+---
+
+# 🛠️ システム構成図
+
+<div class="mermaid">
+graph TD
+    subgraph "Client"
+        Phone["📱 Phone"]
+        Display["💻 Display"]
+    end
+
+    subgraph "Frontend (Next.js on Vercel)"
+        PhoneUI["Phone Page<br>Device Sensor"]
+        DisplayUI["Display Page<br>p5.js / WebGL"]
+    end
+
+    subgraph "Backend (Supabase)"
+        API["Edge Function"]
+        DB["Postgres DB"]
+        Realtime["Realtime WebSocket"]
+    end
+
+    Phone -- "1. Vibe (Shake)" --> PhoneUI
+    PhoneUI -- "2. Send Event" --> API
+    API -- "3. Save Data" --> DB
+    API -- "4. Broadcast" --> Realtime
+    Realtime -- "5. Receive Data" --> DisplayUI
+    DisplayUI -- "6. Render Fireworks" --> Display
+</div>
 
 ---
 

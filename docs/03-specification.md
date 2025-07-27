@@ -183,7 +183,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE firework_events;
 ### 4.2. 推奨VSCode拡張機能
 - ESLint
 - Prettier
-- TypeScript Vue Plugin
+- React Extension Pack
 - Three.js Editor
 - WebGL Shader Editor
 
