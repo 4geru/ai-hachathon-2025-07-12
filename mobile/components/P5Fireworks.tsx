@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect } from 'react';
 import p5 from 'p5';
 
 interface FireworkVibe {
@@ -12,13 +12,13 @@ interface FireworkVibe {
 
 interface P5FireworksProps {
   vibe?: FireworkVibe;
-  position?: 'center' | 'random'; // 発射位置を制御
+  position?: 'center' | 'random';
   fireworkEvent?: {
     id: string;
     vibe: FireworkVibe;
     timestamp: number;
     audioDuration?: number;
-    clickPosition?: { x: number; y: number }; // クリック位置
+    clickPosition?: { x: number; y: number };
   } | null;
 }
 
@@ -59,7 +59,7 @@ class Particle implements IParticleData {
     if (exploded) {
       this.vel = p5.Vector.random2D().mult(p.random(1, 10));
     } else {
-      this.vel = p.createVector(0, p.random(-18, -12)); // Initial upward velocity for launch (increased for higher launch)
+      this.vel = p.createVector(0, p.random(-18, -12));
     }
   }
 
@@ -69,25 +69,24 @@ class Particle implements IParticleData {
 
   update() {
     if (!this.exploded) {
-      this.applyForce(this.p.createVector(0, 0.2)); // Gravity for launch particle
+      this.applyForce(this.p.createVector(0, 0.2));
       this.vel.add(this.acc);
       this.pos.add(this.vel);
       this.acc.mult(0);
       this.lifespan -= 1;
     } else {
-      this.vel.mult(0.95); // Air resistance for exploded particles
-      this.applyForce(this.p.createVector(0, 0.1)); // Gravity for exploded particles
+      this.vel.mult(0.95);
+      this.applyForce(this.p.createVector(0, 0.1));
       this.vel.add(this.acc);
       this.pos.add(this.vel);
       this.acc.mult(0);
-      // 通常の減衰率
       this.lifespan -= 3;
     }
   }
 
   display() {
     this.p.stroke(this.hue, this.saturation, this.brightness, this.lifespan);
-    this.p.strokeWeight(3); // パーティクルのサイズを大きくして、より見やすく
+    this.p.strokeWeight(3);
     this.p.point(this.pos.x, this.pos.y);
   }
 
@@ -110,14 +109,10 @@ class Firework {
     this.p = p;
     this.audioDuration = audioDuration;
     
-    // vibeデータがある場合はそれを使用、なければランダム
     if (vibe) {
-      // 色文字列をHSBの色相に変換
       this.hue = this.colorStringToHue(vibe.color);
-      this.size = Math.max(1.0, Math.min(4.0, vibe.size / 30)); // サイズを1.0-4.0の範囲に正規化（より大きく）
+      this.size = Math.max(1.0, Math.min(4.0, vibe.size / 30));
       this.pattern = vibe.pattern;
-      
-      // シードを使用してランダムを再現可能にする
       p.randomSeed(vibe.seed);
     } else {
       this.hue = p.random(0, 360);
@@ -130,18 +125,16 @@ class Firework {
     this.particles = [];
   }
 
-  // 色文字列をHSBの色相に変換
   colorStringToHue(colorString: string): number {
-    // 簡単な色マッピング（実際のプロジェクトではより高度な変換が必要）
     const colorMap: { [key: string]: number } = {
-      '#ff6b6b': 0,    // 赤
-      '#4ecdc4': 180,  // シアン
-      '#45b7d1': 200,  // 青
-      '#96ceb4': 120,  // 緑
-      '#ffeaa7': 50,   // 黄
-      '#fd79a8': 320,  // ピンク
-      '#a29bfe': 250,  // 紫
-      '#fd7f6f': 10,   // オレンジ
+      '#ff6b6b': 0,
+      '#4ecdc4': 180,
+      '#45b7d1': 200,
+      '#96ceb4': 120,
+      '#ffeaa7': 50,
+      '#fd79a8': 320,
+      '#a29bfe': 250,
+      '#fd7f6f': 10,
     };
     
     return colorMap[colorString] || this.p.random(0, 360);
@@ -150,7 +143,7 @@ class Firework {
   update() {
     if (!this.exploded) {
       this.firework.update();
-      if (this.firework.vel.y >= 0) { // When launch particle starts falling, explode
+      if (this.firework.vel.y >= 0) {
         this.explode(this.firework.pos.x, this.firework.pos.y, this.hue);
         this.exploded = true;
         
@@ -183,29 +176,23 @@ class Firework {
     }
   }
 
-  // explodeメソッド：パターンとサイズに対応
   explode(x: number, y: number, baseHue: number) {
-    let numParticles = 40; // 基本パーティクル数
-    // 音声の長さに基づいてライフスパンを計算（フレームレート50fps）
+    let numParticles = 40;
     const lifespan = this.audioDuration ? Math.floor(this.audioDuration * 50) : 255;
 
-    // パターンに応じてパーティクル数を調整
     if (this.pattern === 'fountain') {
-      numParticles = Math.floor(numParticles * 0.6); // 噴水は少なめ
+      numParticles = Math.floor(numParticles * 0.6);
     } else if (this.pattern === 'burst') {
-      numParticles = Math.floor(numParticles * Math.min(this.size, 2.0)); // サイズに応じて調整（上限を設定）
+      numParticles = Math.floor(numParticles * Math.min(this.size, 2.0));
     }
 
     for (let i = 0; i < numParticles; i++) {
       const particleHue = (baseHue + this.p.random(-30, 30)) % 360;
       const particle = new Particle(this.p, x, y, particleHue < 0 ? particleHue + 360 : particleHue, lifespan, true);
       
-      // パターンに応じて初期速度を調整
       if (this.pattern === 'fountain') {
-        // 噴水パターン：上方向メインで少し横にも散らばる
         particle.vel = this.p.createVector(this.p.random(-2, 2), this.p.random(-8, -4));
       } else if (this.pattern === 'burst') {
-        // バーストパターン：全方向に均等に散らばる
         particle.vel = p5.Vector.random2D().mult(this.p.random(2, 15 * this.size));
       }
       
@@ -218,98 +205,114 @@ class Firework {
   }
 }
 
+// グローバル変数でp5インスタンスを追跡
+let globalP5Instance: p5 | null = null;
+
 const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fireworkEvent }) => {
-  const sketchRef = useRef<HTMLDivElement>(null);
-  const p5Instance = useRef<p5 | null>(null);
-  const fireworks = useRef<Firework[]>([]);
-  const lastEventId = useRef<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const p5InstanceRef = useRef<p5 | null>(null);
+  const fireworksRef = useRef<Firework[]>([]);
+  const lastEventIdRef = useRef<string | null>(null);
+  const mountedRef = useRef(false);
 
-  const sketch = useCallback((p: p5) => {
-    p.setup = () => {
-      p.createCanvas(p.windowWidth, p.windowHeight).parent(sketchRef.current || document.body);
-      p.colorMode(p.HSB, 360, 100, 100, 255);
-      p.background(0);
-      p.frameRate(50); // フレームレートを少し下げて負荷軽減（clash対策）
-      
-      // 自動的に花火を発射しない（fireworkEventがある場合のみ発射）
-    };
-
-    p.draw = () => {
-      p.background(0, 0, 0, 25); // Trailing effect
-      for (let i = fireworks.current.length - 1; i >= 0; i--) {
-        fireworks.current[i].update();
-        fireworks.current[i].display();
-        if (fireworks.current[i].isFinished()) {
-          fireworks.current.splice(i, 1);
-        }
+  useEffect(() => {
+    // SSRチェック - windowが存在しない場合は何もしない
+    if (typeof window === 'undefined') return;
+    if (mountedRef.current || !containerRef.current) return;
+    
+    // 遅延してcanvas作成（React重複レンダリング回避）
+    const timeoutId = setTimeout(() => {
+      // グローバルインスタンスが既に存在する場合は削除
+      if (globalP5Instance) {
+        globalP5Instance.remove();
+        globalP5Instance = null;
       }
-    };
+      
+      // 既存のcanvasを削除（ページ全体から）
+      const allCanvases = document.querySelectorAll('canvas');
+      allCanvases.forEach(canvas => canvas.remove());
+      
+      mountedRef.current = true;
+      
+      const sketch = (p: p5) => {
+        p.setup = () => {
+          const canvas = p.createCanvas(p.windowWidth, p.windowHeight);
+          canvas.parent(containerRef.current!);
+          p.colorMode(p.HSB, 360, 100, 100, 255);
+          p.background(0);
+          p.frameRate(50);
+        };
 
-    p.windowResized = () => {
-      p.resizeCanvas(p.windowWidth, p.windowHeight);
-    };
-
-    p.mouseClicked = () => {
-      if (p.mouseY < p.height - 50) {
-        // クリック位置での花火打ち上げイベントを発行
-        window.dispatchEvent(new CustomEvent('fireworkClickLaunch', {
-          detail: { 
-            id: `click-${Date.now()}`,
-            x: p.mouseX, 
-            y: p.mouseY,
-            vibe: vibe || {
-              color: '#4ecdc4',
-              size: 50,
-              pattern: 'burst',
-              seed: Math.random()
+        p.draw = () => {
+          p.background(0, 0, 0, 25);
+          for (let i = fireworksRef.current.length - 1; i >= 0; i--) {
+            fireworksRef.current[i].update();
+            fireworksRef.current[i].display();
+            if (fireworksRef.current[i].isFinished()) {
+              fireworksRef.current.splice(i, 1);
             }
           }
-        }));
+        };
+
+        p.windowResized = () => {
+          p.resizeCanvas(p.windowWidth, p.windowHeight);
+        };
+
+        p.mouseClicked = () => {
+          if (p.mouseY < p.height - 50) {
+            window.dispatchEvent(new CustomEvent('fireworkClickLaunch', {
+              detail: { 
+                id: `click-${Date.now()}`,
+                x: p.mouseX, 
+                y: p.mouseY,
+                vibe: vibe || {
+                  color: '#4ecdc4',
+                  size: 50,
+                  pattern: 'burst',
+                  seed: Math.random()
+                }
+              }
+            }));
+          }
+        };
+      };
+
+      p5InstanceRef.current = new p5(sketch);
+      globalP5Instance = p5InstanceRef.current;
+    }, 100); // 100ms遅延
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (p5InstanceRef.current) {
+        p5InstanceRef.current.remove();
+        p5InstanceRef.current = null;
       }
+      if (globalP5Instance === p5InstanceRef.current) {
+        globalP5Instance = null;
+      }
+      mountedRef.current = false;
     };
+  }, []);
 
-
-  }, [vibe]);
-
-  // 新しい花火イベントを監視
   useEffect(() => {
-    if (fireworkEvent && fireworkEvent.id !== lastEventId.current && p5Instance.current) {
-      const p = p5Instance.current;
+    if (fireworkEvent && fireworkEvent.id !== lastEventIdRef.current && p5InstanceRef.current) {
+      const p = p5InstanceRef.current;
       
-      // クリック位置が指定されている場合はそれを使用、そうでなければ通常の位置決定
       let startX, startY;
       if (fireworkEvent.clickPosition) {
         startX = fireworkEvent.clickPosition.x;
         startY = fireworkEvent.clickPosition.y;
-        console.log('クリック位置での花火作成:', startX, startY);
       } else {
         startX = position === 'center' ? p.width / 2 : p.random(p.width * 0.2, p.width * 0.8);
         startY = p.height - 50;
       }
       
-      console.log('New firework creating:', fireworkEvent.id, 'Audio duration:', fireworkEvent.audioDuration);
-      
-      // 花火オブジェクトを作成（ヒュー音は launchCompleteFirework で既に再生済み）
-      fireworks.current.push(new Firework(p, startX, startY, fireworkEvent.vibe, fireworkEvent.audioDuration));
-      lastEventId.current = fireworkEvent.id;
-      console.log('New firework added:', fireworkEvent.id);
+      fireworksRef.current.push(new Firework(p, startX, startY, fireworkEvent.vibe, fireworkEvent.audioDuration));
+      lastEventIdRef.current = fireworkEvent.id;
     }
   }, [fireworkEvent, position]);
 
-  useEffect(() => {
-    if (sketchRef.current && !p5Instance.current) {
-      p5Instance.current = new p5(sketch, sketchRef.current);
-    }
-
-    return () => {
-      if (p5Instance.current) {
-        p5Instance.current.remove();
-        p5Instance.current = null;
-      }
-    };
-  }, [sketch]);
-
-  return <div ref={sketchRef} className="w-full h-full" />;
+  return <div ref={containerRef} className="w-full h-full" />;
 };
 
-export default P5Fireworks; 
+export default P5Fireworks;

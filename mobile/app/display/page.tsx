@@ -597,7 +597,7 @@ export default function DisplayPage() {
           </div>
         </div>
       </div>
-      <P5Fireworks fireworkEvent={fireworkEvent} />
+      <P5Fireworks key="single-fireworks" fireworkEvent={fireworkEvent} />
     </div>
   );
 } 

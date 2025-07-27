@@ -429,7 +429,7 @@ export default function PhonePage() {
 
       {/* 花火のバックグラウンド */}
       <div className="absolute inset-0 z-0">
-        <P5Fireworks fireworkEvent={phoneFireworkEvent} position="center" />
+        <P5Fireworks key="phone-fireworks" fireworkEvent={phoneFireworkEvent} position="center" />
       </div>
     </div>
   );
