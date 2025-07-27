@@ -23,6 +23,7 @@ export default function SkyCanvasHeader({
           <div className="flex items-center space-x-3">
             <div>
               <h1 className="text-xl font-bold text-white">🎆 Sky Canvas 🎆</h1>
+              <h2 className="text-sm text-gray-300">{variant === 'display' ? '💻 Laptop Controller' : '📱 Smartphone Controller'}</h2>
               <p className="text-xs text-gray-300">
                 {variant === 'display' ? 'Paint your creativity in the sky' : 'Shake your smartphone to launch fireworks'}
               </p>

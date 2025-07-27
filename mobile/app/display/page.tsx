@@ -74,6 +74,7 @@ export default function DisplayPage() {
   const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
   const [phoneUrl, setPhoneUrl] = useState<string>('');
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
+  const [debugMode, setDebugMode] = useState<boolean>(false);
   // ========= 画面スリープ防止 (Wake Lock) =========
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
@@ -308,6 +309,46 @@ export default function DisplayPage() {
   };
 
   /**
+   * デバッグモード: 3つの花火を同時発射
+   */
+  const launchTripleFireworks = async () => {
+    console.log('=== デバッグモード: 3つの花火同時発射 ===');
+    
+    // 音声が有効でない場合は有効化を試みる
+    if (!audioEnabled) {
+      console.log('音声未有効 - 自動有効化を試行中...');
+      await enableAudio();
+    }
+    
+    const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff'];
+    const patterns = ['burst', 'ring', 'spiral'];
+    const timestamp = Date.now();
+    
+    // 3つの花火を少しずつ時間をずらして発射
+    for (let i = 0; i < 3; i++) {
+      setTimeout(async () => {
+        // ランダムな位置を生成
+        const randomX = Math.random() * window.innerWidth;
+        const randomY = window.innerHeight - 50; // 画面下部から発射
+        
+        console.log(`デバッグ花火 ${i + 1}/3 発射開始 - 音声有効: ${audioEnabled}`);
+        
+        // launchCompleteFirework が音声再生も含んでいるので直接呼び出し
+        await launchCompleteFirework({
+          id: `debug-triple-${timestamp}-${i}`,
+          vibe: {
+            color: colors[Math.floor(Math.random() * colors.length)], // ランダムな色
+            size: 60 + Math.random() * 40, // 60-100のランダムサイズ
+            pattern: patterns[Math.floor(Math.random() * patterns.length)], // ランダムなパターン
+            seed: Math.random()
+          },
+          clickPosition: { x: randomX, y: randomY } // ランダムな位置
+        });
+      }, i * 300); // 300ms間隔で発射（少し間隔を広げて音声が重ならないように）
+    }
+  };
+
+  /**
    * 完全な花火打ち上げ関数
    * ヒュー音再生 + 花火イベント作成を統合
    */
@@ -511,6 +552,26 @@ export default function DisplayPage() {
     };
   }, []);
 
+  // キーボードショートカットでデバッグモード
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === 'd' || event.key === 'D') {
+        setDebugMode(!debugMode);
+        console.log('Debug mode:', !debugMode ? 'ON' : 'OFF');
+      }
+      if (event.key === 't' || event.key === 'T') {
+        if (debugMode) {
+          launchTripleFireworks();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [debugMode]);
+
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden" onClick={enableAudio}>
       <SkyCanvasHeader 
@@ -519,6 +580,8 @@ export default function DisplayPage() {
         // connectionStatus={connectionStatus}
         // phoneUrl={phoneUrl}
       />
+      
+      
       <P5Fireworks key="single-fireworks" fireworkEvent={fireworkEvent} />
     </div>
   );

@@ -29,6 +29,7 @@ export default function PhonePage() {
     timestamp: number;
     audioDuration?: number;
   } | null>(null); // スマホ側花火イベント
+  const [isMounted, setIsMounted] = useState<boolean>(false); // クライアントサイド判定
   const lastMessageTime = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -338,6 +339,11 @@ export default function PhonePage() {
     }
   }, [orientationPermissionGranted]);
 
+  // クライアントサイドマウント検出
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // クリーンアップ
   useEffect(() => {
     return () => {
@@ -349,218 +355,93 @@ export default function PhonePage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen w-full h-screen overflow-hidden" suppressHydrationWarning>
       {/* 固定ヘッダー */}
       <SkyCanvasHeader variant="phone" />
-            
-      {/* UI コンテンツ - ヘッダー分の余白を追加 */}
-      {/* <div className="relative z-10 flex min-h-screen flex-col items-center justify-center p-4 pt-20">
-        <div className="bg-black bg-opacity-70 rounded-lg p-6 text-white border border-gray-300 shadow-2xl max-w-md w-full">
-          <p className="text-center text-lg mb-4">Tilt your smartphone to launch fireworks!</p>
-          
-          <div className="flex justify-center mb-4">
-            <button
-              onClick={() => setDebugMode(!debugMode)}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg text-sm"
-            >
-              {debugMode ? '🔧 Hide Debug' : '🔧 Show Debug'}
-            </button>
-          </div>
-          
-          {(!permissionGranted || !orientationPermissionGranted || !audioEnabled) && (
-            <div className="space-y-3">
-              <button
-                onClick={requestPermission}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg border-2 border-white border-opacity-30 transition-all duration-300 transform hover:scale-105 w-full"
-              >
-                Request Sensor and Audio Permission
-              </button>
-              <div className="text-sm text-gray-300 text-center">
-                <p>🎵 Audio will play along with fireworks</p>
-                <p>📱 Sensor and audio permissions required</p>
-              </div>
-            </div>
-          )}
-          {permissionError && (
-            <div className="mt-4 p-3 bg-red-500 bg-opacity-20 border border-red-400 rounded-lg">
-              <p className="text-red-300 text-center">Error: {permissionError}</p>
-            </div>
-          )}
-          
-          {debugMode && (
-            <>
-              {permissionGranted && (
-                <div className="mt-2 p-2 bg-blue-500 bg-opacity-20 border border-blue-400 rounded-lg">
-                  <h2 className="text-base font-semibold mb-1 text-center text-blue-200">Acceleration Sensor</h2>
-                  <div className="flex justify-around text-xs text-gray-300">
-                    <p>X-axis: {acceleration.x !== null ? acceleration.x.toFixed(2) : 'N/A'}</p>
-                    <p>Y-axis: {acceleration.y !== null ? acceleration.y.toFixed(2) : 'N/A'}</p>
-                    <p>Z-axis: {acceleration.z !== null ? acceleration.z.toFixed(2) : 'N/A'}</p>
-                  </div>
-                  {acceleration.x !== null && acceleration.y !== null && (
-                    <div className="mt-1 text-center">
-                      <p className="text-yellow-200 text-xs">
-                        Tilt strength: {Math.sqrt(acceleration.x ** 2 + acceleration.y ** 2).toFixed(2)} (Launch threshold: 2.5)
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {orientationPermissionGranted && (
-                <div className="mt-2 p-2 bg-purple-500 bg-opacity-20 border border-purple-400 rounded-lg">
-                  <h2 className="text-base font-semibold mb-1 text-center text-purple-200">Orientation Sensor</h2>
-                  <div className="flex justify-around text-xs text-gray-300">
-                    <p>Alpha (Z-axis): {orientation.alpha !== null ? orientation.alpha.toFixed(2) + '°' : 'N/A'}</p>
-                    <p>Beta (X-axis): {orientation.beta !== null ? orientation.beta.toFixed(2) + '°' : 'N/A'}</p>
-                    <p>Gamma (Y-axis): {orientation.gamma !== null ? orientation.gamma.toFixed(2) + '°' : 'N/A'}</p>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-          
-          {audioEnabled && (
-            <div className="mt-4 p-3 bg-green-500 bg-opacity-20 border border-green-400 rounded-lg">
-              <p className="text-green-200 text-center">🎵 Audio enabled successfully</p>
-            </div>
-          )}
-
-          {(permissionGranted || orientationPermissionGranted) && (
-            <div className="mt-4 text-center">
-              {fireworkSentMessage ? (
-                <div className="p-4 bg-green-500 bg-opacity-30 border border-green-400 rounded-lg animate-pulse">
-                  <p className="text-green-200 text-xl font-bold animate-bounce">🎆 Firework Launched! 🎆</p>
-                  <p className="text-green-200 text-sm">Playing simultaneously on display and phone</p>
-                  <div className="mt-2 text-yellow-200 text-xs">
-                    Strength: {tiltStrength.toFixed(1)} / 2.5
-                  </div>
-                </div>
-              ) : (
-                <div className={`p-3 rounded-lg transition-all duration-200 ${
-                  isReadyToLaunch 
-                    ? 'bg-yellow-500 bg-opacity-30 border border-yellow-400 animate-pulse' 
-                    : 'bg-blue-500 bg-opacity-20 border border-blue-400'
-                }`}>
-                  <p className={`text-lg font-semibold ${
-                    isReadyToLaunch ? 'text-yellow-200' : 'text-blue-200'
-                  }`}>
-                    {isReadyToLaunch ? '⚡ Ready to Launch!' : '📱 Ready'}
-                  </p>
-                  <p className={`text-sm ${
-                    isReadyToLaunch ? 'text-yellow-200' : 'text-blue-200'
-                  }`}>
-                    {isReadyToLaunch ? 'Tilt a bit more to launch!' : 'Shake your smartphone to launch fireworks'}
-                  </p>
-                  
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-300">Tilt Strength</span>
-                      <span className={`font-mono ${
-                        tiltStrength >= 2.5 ? 'text-red-200' :
-                        tiltStrength >= 2.0 ? 'text-yellow-200' :
-                        'text-gray-300'
-                      }`}>
-                        {tiltStrength.toFixed(1)} / 2.5
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-600 rounded-full h-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-200 ${
-                          tiltStrength >= 2.5 ? 'bg-red-400' :
-                          tiltStrength >= 2.0 ? 'bg-yellow-400' :
-                          'bg-blue-400'
-                        }`}
-                        style={{ width: `${Math.min((tiltStrength / 2.5) * 100, 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div> */}
 
       {/* 花火のバックグラウンド */}
       <div className="absolute inset-0 z-0">
         <P5Fireworks key="phone-fireworks" fireworkEvent={phoneFireworkEvent} position="center" />
       </div>
 
-      {/* 底部固定の花火ボタン */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-black via-black/80 to-transparent">
-        <div className="max-w-md mx-auto">
-          {/* 権限リクエストボタン（必要時のみ表示） */}
-          {(!permissionGranted || !orientationPermissionGranted || !audioEnabled) && (
-            <div className="mb-4">
-              <button
-                onClick={requestPermission}
-                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg border-2 border-white border-opacity-30 transition-all duration-300 transform hover:scale-105 w-full"
-              >
-                🎵 Enable Audio & Sensors 🎵
-              </button>
-              <p className="text-xs text-gray-300 text-center mt-2">
-                Tap to enable audio and motion sensors
-              </p>
-            </div>
-          )}
-
-          {/* メイン花火ボタン */}
+      {/* 権限リクエストボタン（必要時のみ表示） - 上部固定 */}
+      {(!permissionGranted || !orientationPermissionGranted || !audioEnabled) && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-60 w-full max-w-md px-6">
           <button
-            onClick={launchManualFirework}
-            disabled={fireworkSentMessage}
-            className={`bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-6 px-8 rounded-full shadow-lg border-2 border-white border-opacity-30 transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:opacity-50 w-full text-xl ${
-              fireworkSentMessage ? 'animate-pulse' : ''
-            }`}
+            onClick={requestPermission}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl shadow-xl border-3 border-white border-opacity-40 transition-all duration-300 transform hover:scale-110 w-full"
           >
-            {fireworkSentMessage ? '🎆 Launching...' : '🎆 Launch Firework 🎆'}
+            <div className="flex flex-col items-center space-y-2">
+              <span className="text-2xl">🎵</span>
+              <span className="text-lg">Enable Audio & Sensors</span>
+            </div>
           </button>
-          
-          {/* ステータス表示 */}
-          <div className="mt-3 text-center">
-            {fireworkSentMessage ? (
-              <p className="text-green-200 text-sm animate-pulse">
-                ✨ Firework launched successfully! ✨
-              </p>
-            ) : (
-              <p className="text-gray-300 text-sm">
-                Tap to launch colorful fireworks on the big screen!
-              </p>
-            )}
-            
-            {/* 傾きセンサーの簡易フィードバック */}
-            {(permissionGranted || orientationPermissionGranted) && (
-              <div className="mt-2">
-                <div className="flex items-center justify-center space-x-2">
-                  <span className="text-xs text-gray-400">Tilt:</span>
-                  <div className="w-20 bg-gray-600 rounded-full h-1">
-                    <div 
-                      className={`h-1 rounded-full transition-all duration-200 ${
-                        tiltStrength >= 2.5 ? 'bg-red-400' :
-                        tiltStrength >= 2.0 ? 'bg-yellow-400' :
-                        'bg-blue-400'
-                      }`}
-                      style={{ width: `${Math.min((tiltStrength / 2.5) * 100, 100)}%` }}
-                    ></div>
-                  </div>
-                  <span className={`text-xs ${
-                    tiltStrength >= 2.5 ? 'text-red-200' :
-                    tiltStrength >= 2.0 ? 'text-yellow-200' :
-                    'text-gray-400'
-                  }`}>
-                    {tiltStrength.toFixed(1)}
+          <p className="text-sm text-gray-300 text-center mt-3">
+            Tap to enable audio and motion sensors
+          </p>
+        </div>
+      )}
+
+      {/* タップ指示とメイン花火ボタンのコンテナ - クライアントサイドでのみ中央配置 */}
+      {isMounted && (
+        <div className="fixed inset-0 w-full h-full z-50 flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center gap-4">
+            {/* メイン花火ボタン */}
+            <div className="relative flex items-center justify-center mx-auto">            
+              <button
+                onClick={launchManualFirework}
+                disabled={fireworkSentMessage}
+                className={`relative bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 hover:from-blue-400 hover:via-purple-400 hover:to-pink-400 disabled:from-gray-600 disabled:via-gray-500 disabled:to-gray-600 text-white font-bold rounded-3xl shadow-2xl border-4 border-white border-opacity-70 transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:opacity-50 ${
+                  fireworkSentMessage ? 'animate-pulse' : ''
+                }`}
+                style={{ 
+                  width: '300px', 
+                  height: '120px',
+                  boxShadow: fireworkSentMessage 
+                    ? '0 0 50px rgba(59, 130, 246, 0.8), 0 0 100px rgba(168, 85, 247, 0.6)' 
+                    : '0 20px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(59, 130, 246, 0.3)'
+                }}
+              >
+                <div className="flex flex-col items-center justify-center h-full space-y-2">
+                  <span className="text-5xl">
+                    {fireworkSentMessage ? '🚀' : '🎆'}
                   </span>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold leading-tight">
+                      {fireworkSentMessage ? 'LAUNCHING!' : 'LAUNCH'}
+                    </div>
+                    <div className="text-xl font-semibold opacity-90">
+                      {fireworkSentMessage ? 'Please wait...' : 'FIREWORKS'}
+                    </div>
+                  </div>
                 </div>
-                {tiltStrength >= 2.5 && (
-                  <p className="text-xs text-red-200 mt-1 animate-pulse">
-                    🔥 Auto-launch ready! Keep tilting to launch automatically
-                  </p>
-                )}
+              </button>
+              
+              {/* パルス効果 */}
+              {!fireworkSentMessage && (
+                <div className="absolute inset-0 rounded-3xl border-4 border-white opacity-30 animate-ping" style={{ animationDuration: '2s' }}></div>
+              )}
+            </div>
+            
+            {/* 成功メッセージ - ボタンの下に配置 */}
+            {fireworkSentMessage && (
+              <div className="max-w-sm mx-auto">
+                <div className="bg-green-900/80 backdrop-blur-sm border border-green-400 rounded-xl p-6 shadow-xl">
+                  <div className="text-center">
+                    <p className="text-green-200 text-xl font-bold animate-pulse">
+                      ✨ Firework Launched! ✨
+                    </p>
+                    <p className="text-green-300 text-sm mt-2">
+                      Watch the big screen for the spectacular show!
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
+            
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 } 

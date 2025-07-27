@@ -146,14 +146,27 @@ class Firework {
     if (!this.exploded) {
       this.firework.update();
       
+      // デバイス検出：モバイルかデスクトップかを判定
+      const isMobile = this.p.windowWidth < 768; // 768px未満をモバイルとする
+      
       // クリック花火の場合はより早く爆発させる（より低い位置で）
       let shouldExplode = false;
       if (this.isClickFirework) {
-        // クリック花火は上昇速度が0になるか、画面の下半分に達したら爆発
-        shouldExplode = this.firework.vel.y >= 0 || this.firework.pos.y <= this.p.height * 0.5;
+        if (isMobile) {
+          // モバイル：クリック花火は画面の下から70%の位置に達したら爆発
+          shouldExplode = this.firework.vel.y >= 0 || this.firework.pos.y <= this.p.height * 0.7;
+        } else {
+          // デスクトップ：従来通り上昇速度が0になるか、画面の下半分に達したら爆発
+          shouldExplode = this.firework.vel.y >= 0 || this.firework.pos.y <= this.p.height * 0.5;
+        }
       } else {
-        // 通常の花火は従来通り
-        shouldExplode = this.firework.vel.y >= 0;
+        if (isMobile) {
+          // モバイル：通常の花火も少し低めに爆発（画面の60%の位置）
+          shouldExplode = this.firework.vel.y >= 0 || this.firework.pos.y <= this.p.height * 0.6;
+        } else {
+          // デスクトップ：従来通り上昇速度が0になったら爆発（迫力を保つ）
+          shouldExplode = this.firework.vel.y >= 0;
+        }
       }
       
       if (shouldExplode) {
@@ -249,7 +262,12 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
       
       const sketch = (p: p5) => {
         p.setup = () => {
-          const canvas = p.createCanvas(p.windowWidth, p.windowHeight - 300);
+          // デバイスに応じてキャンバス高さを調整
+          const isMobile = p.windowWidth < 768;
+          const canvasHeight = isMobile 
+            ? p.windowHeight - 80  // モバイル：ヘッダー分を少なめに調整
+            : p.windowHeight - 300; // デスクトップ：従来通り（迫力を保つ）
+          const canvas = p.createCanvas(p.windowWidth, canvasHeight);
           canvas.parent(containerRef.current!);
           p.colorMode(p.HSB, 360, 100, 100, 255);
           p.background(0);
@@ -268,7 +286,12 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
         };
 
         p.windowResized = () => {
-          p.resizeCanvas(p.windowWidth, p.windowHeight - 300);
+          // リサイズ時もデバイスに応じて高さを調整
+          const isMobile = p.windowWidth < 768;
+          const canvasHeight = isMobile 
+            ? p.windowHeight - 80  // モバイル
+            : p.windowHeight - 300; // デスクトップ
+          p.resizeCanvas(p.windowWidth, canvasHeight);
         };
 
         p.mouseClicked = () => {
