@@ -64,15 +64,11 @@ export default function DisplayPage() {
     audioDuration?: number;
   } | null>(null);
   const lastTriggerTime = useRef(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioPool = useRef<HTMLAudioElement[]>([]);
-  const [audioDuration, setAudioDuration] = useState<number>(0);
   // Web Audio API 用の参照
   const audioCtxRef = useRef<AudioContext | null>(null);
   const launchBufferRef = useRef<AudioBuffer | null>(null);
   const explosionBufferRef = useRef<AudioBuffer | null>(null);
   const peakOffsetRef = useRef<number>(0);
-  const maxConcurrentSounds = 5; // 同時再生可能な音声数
   const explosionSyncDelay = 120; // 視覚的爆発との同期のための遅延時間（ms）
   const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
   const [phoneUrl, setPhoneUrl] = useState<string>('');
@@ -114,7 +110,8 @@ export default function DisplayPage() {
       }
     };
   }, []);
-  const launchVolume = 1.5; // ヒュー音の音量倍率（通常=1.0）
+  const explosionRepeats = 2; // 爆発音の繰り返し回数
+  const explosionRepeatGap = 0.12; // 繰り返し間隔（秒）
 
   // 現在のホスト名を取得してphone URLを生成
   useEffect(() => {
@@ -126,293 +123,253 @@ export default function DisplayPage() {
 
   // 音声を有効にする関数
   const enableAudio = async () => {
-    if (audioRef.current) {
-      try {
-        console.log('音声有効化を試行中...');
+    try {
+      console.log('音声有効化を試行中...');
+      
+      /* ---------------- Web Audio 初期化 ---------------- */
+      if (!audioCtxRef.current) {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        audioCtxRef.current = new AudioCtx();
+      }
+      
+      // AudioContext をユーザー操作内で resume
+      if (audioCtxRef.current.state === 'suspended') {
+        await audioCtxRef.current.resume();
+      }
+      
+      if (audioCtxRef.current && (!launchBufferRef.current || !explosionBufferRef.current)) {
+        console.log('音声ファイルの読み込み開始...');
         
-        // 音声ファイルの準備状態をチェック
-        if (audioRef.current.readyState < 2) {
-          console.log('音声ファイルがまだ読み込まれていません');
-          // 音声ファイルの読み込みを待つ
-          await new Promise((resolve) => {
-            audioRef.current!.addEventListener('canplay', resolve, { once: true });
-          });
-        }
-
-        // 音声を一瞬再生してから止める（音声コンテキストを有効化）
-        audioRef.current.volume = 0.1; // 完全に0にするとブラウザが再生を無視する場合がある
-        
-        const playPromise = audioRef.current.play();
-        await playPromise;
-        
-        // 少し待ってから停止
-        setTimeout(() => {
-          if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-            audioRef.current.volume = 0.5; // 通常の音量に戻す
-          }
-        }, 100);
-        
-        /* ---------------- Web Audio 初期化 ---------------- */
-        if (!audioCtxRef.current) {
-          const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-          audioCtxRef.current = new AudioCtx();
-        }
-        if (audioCtxRef.current && (!launchBufferRef.current || !explosionBufferRef.current)) {
-          // launch 音源
+        // launch 音源
+        try {
+          console.log('sounds_launch.mp3 の読み込み開始');
           const launchRes = await fetch('/sounds_launch.mp3');
+          if (!launchRes.ok) {
+            throw new Error(`HTTP ${launchRes.status}: ${launchRes.statusText}`);
+          }
           const launchArr = await launchRes.arrayBuffer();
+          console.log('sounds_launch.mp3 ArrayBuffer取得完了, size:', launchArr.byteLength);
           launchBufferRef.current = await audioCtxRef.current.decodeAudioData(launchArr);
+          console.log('sounds_launch.mp3 デコード完了:', {
+            duration: launchBufferRef.current.duration,
+            sampleRate: launchBufferRef.current.sampleRate,
+            channels: launchBufferRef.current.numberOfChannels
+          });
+        } catch (error) {
+          console.error('sounds_launch.mp3 読み込みエラー:', error);
+        }
 
-          // explosion 音源
+        // explosion 音源
+        try {
+          console.log('sounds_explosion.mp3 の読み込み開始');
           const expRes = await fetch('/sounds_explosion.mp3');
+          if (!expRes.ok) {
+            throw new Error(`HTTP ${expRes.status}: ${expRes.statusText}`);
+          }
           const expArr = await expRes.arrayBuffer();
+          console.log('sounds_explosion.mp3 ArrayBuffer取得完了, size:', expArr.byteLength);
           const decoded = await audioCtxRef.current.decodeAudioData(expArr);
           explosionBufferRef.current = decoded;
-          
-          // ピーク検出（簡易 RMS）
-          const ch = decoded.getChannelData(0);
-          let maxRms = 0;
-          let peakSample = 0;
-          const block = 1024;
-          for (let i = 0; i < ch.length; i += block) {
-            let sum = 0;
-            for (let j = 0; j < block && i + j < ch.length; j++) {
-              const v = ch[i + j];
-              sum += v * v;
+          console.log('sounds_explosion.mp3 デコード完了:', {
+            duration: decoded.duration,
+            sampleRate: decoded.sampleRate,
+            channels: decoded.numberOfChannels
+          });
+        } catch (error) {
+          console.error('sounds_explosion.mp3 読み込みエラー:', error);
+        }
+        
+        // ピーク検出（簡易 RMS） - explosionBufferRef.currentが存在する場合のみ
+        if (explosionBufferRef.current) {
+          try {
+            const ch = explosionBufferRef.current.getChannelData(0);
+            let maxRms = 0;
+            let peakSample = 0;
+            const block = 1024;
+            for (let i = 0; i < ch.length; i += block) {
+              let sum = 0;
+              for (let j = 0; j < block && i + j < ch.length; j++) {
+                const v = ch[i + j];
+                sum += v * v;
+              }
+              const rms = Math.sqrt(sum / block);
+              if (rms > maxRms) {
+                maxRms = rms;
+                peakSample = i;
+              }
             }
-            const rms = Math.sqrt(sum / block);
-            if (rms > maxRms) {
-              maxRms = rms;
-              peakSample = i;
-            }
+            peakOffsetRef.current = peakSample / explosionBufferRef.current.sampleRate;
+            console.log('爆発音ピークオフセット(sec):', peakOffsetRef.current);
+          } catch (error) {
+            console.error('ピーク検出エラー:', error);
+            peakOffsetRef.current = 0;
           }
-          peakOffsetRef.current = peakSample / decoded.sampleRate;
-          console.log('爆発音ピークオフセット(sec):', peakOffsetRef.current);
-        }
-
-        // AudioContext をユーザー操作内で resume
-        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-          await audioCtxRef.current.resume();
-        }
-
-        // 全て準備完了後に audioEnabled
-        setAudioEnabled(true);
-        console.log('音声が有効になりました');
-      } catch (error) {
-        console.error('音声有効化エラー:', error);
-        // エラーの詳細を表示
-        if (error instanceof Error) {
-          console.error('エラー詳細:', error.name, error.message);
         }
       }
-    } else {
-      console.error('audioRef.currentがnullです');
+
+      // 全て準備完了後に audioEnabled
+      setAudioEnabled(true);
+      console.log('音声が有効になりました');
+    } catch (error) {
+      console.error('音声有効化エラー:', error);
+      if (error instanceof Error) {
+        console.error('エラー詳細:', error.name, error.message);
+      }
     }
   };
 
-  // ページロード後に音声ファイルの状態をチェック
-  useEffect(() => {
-    const checkAudioReady = () => {
-      if (audioRef.current && audioRef.current.readyState >= 2) {
-        console.log('音声ファイル準備完了');
-        // 音声ファイルが準備完了した段階では、まだaudioEnabledはfalseのまま
-        // ユーザーのクリックを待つ
-      }
-    };
 
-    const timer = setTimeout(checkAudioReady, 1000);
-    return () => clearTimeout(timer);
-  }, []);
 
-  // 音声プールから利用可能な音声要素を取得
-  const getAvailableAudio = (): HTMLAudioElement | null => {
-    // 再生中でない音声要素を探す
-    for (const audio of audioPool.current) {
-      if (audio.paused || audio.ended) {
-        return audio;
-      }
-    }
-    
-    // 利用可能な音声がない場合、最も古い音声を停止して再利用
-    if (audioPool.current.length > 0) {
-      const oldestAudio = audioPool.current[0];
-      oldestAudio.pause();
-      oldestAudio.currentTime = 0;
-      return oldestAudio;
-    }
-    
-    return null;
-  };
 
-  // 音声プールを初期化
-  const initializeAudioPool = () => {
-    audioPool.current = [];
-    for (let i = 0; i < maxConcurrentSounds; i++) {
-      const audio = new Audio('/sounds.mp3');
-      audio.volume = 0.3; // 複数花火に適した音量
-      audio.preload = 'auto';
-      
-      // パフォーマンス最適化のためのイベントリスナー
-      audio.addEventListener('ended', () => {
-        // 再生終了時にリセット（メモリ効率化）
-        audio.currentTime = 0;
-      });
-      
-      audioPool.current.push(audio);
-    }
-    console.log(`音声プール初期化完了: ${maxConcurrentSounds}個の音声要素を作成`);
-  };
-
-  // 音声を再生する関数（プール使用）
-  const playFireworkSound = async (delay: number = 0) => {
-    // 音声が有効になっていない場合は早期リターン
-    if (!audioEnabled) {
+  /**
+   * 花火爆発音を再生する関数
+   * sounds_explosion.mp3 を Web Audio API で再生（同期調整付き）
+   */
+  const playFireworkExplosionSound = () => {
+    // 前提条件チェック
+    if (!audioEnabled || !audioCtxRef.current || !explosionBufferRef.current) {
+      console.log('爆発音再生スキップ - 音声が無効またはバッファ未準備');
       return;
     }
+
+    const ctx = audioCtxRef.current;
+    const buffer = explosionBufferRef.current;
     
-    // 遅延指定がある場合は高精度タイマーで待機してから再生
-    if (delay > 0) {
-      const startTime = performance.now();
-      const waitForPreciseDelay = () => {
-        if (performance.now() - startTime >= delay) {
-          playFireworkSound(0);
-        } else {
-          requestAnimationFrame(waitForPreciseDelay);
-        }
-      };
-      requestAnimationFrame(waitForPreciseDelay);
-      return;
-    }
-    
-    const audio = getAvailableAudio();
-    if (audio) {
-      try {
-        audio.volume = 0.3; // 複数花火に適した音量
-        audio.currentTime = 0;
+    // 視覚的爆発との同期調整
+    const visualFrameLag = 1 / 60; // 1フレーム分の遅延（約16ms）
+    const audioOffset = Math.max(0, peakOffsetRef.current - visualFrameLag);
+
+    try {
+      // 爆発音を複数回重ねて迫力を演出
+      for (let i = 0; i < explosionRepeats; i++) {
+        const audioSource = ctx.createBufferSource();
+        audioSource.buffer = buffer;
+        audioSource.connect(ctx.destination);
         
-        // 非同期再生でパフォーマンス向上
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          await playPromise;
-        }
-        
-        console.log('音声プール再生成功');
-      } catch (error) {
-        // 再生エラーは静かに処理（スパム防止）
-        if (error instanceof Error && error.name === 'NotAllowedError') {
-          setAudioEnabled(false);
-          console.log('音声が自動的に無効化されました');
-        }
+        // 少しずつ時間をずらして重厚感を演出
+        const startTime = ctx.currentTime + (i * explosionRepeatGap);
+        audioSource.start(startTime, audioOffset);
       }
+      
+      console.log(`爆発音再生開始 (${explosionRepeats}回重ね, オフセット: ${audioOffset.toFixed(3)}s)`);
+      
+    } catch (error) {
+      console.error('爆発音再生エラー:', error);
     }
   };
 
-  // 音声の初期設定
+  // 花火爆発イベントを監視
   useEffect(() => {
-    console.log('音声システムを初期化中...');
-    
-    // メイン音声要素（メタデータ取得用）
-    audioRef.current = new Audio('/sounds.mp3');
-    audioRef.current.volume = 0.5;
-    audioRef.current.preload = 'auto';
-    
-    // 音声の長さを取得
-    audioRef.current.addEventListener('loadedmetadata', () => {
-      if (audioRef.current) {
-        setAudioDuration(audioRef.current.duration);
-        console.log('音声の長さ:', audioRef.current.duration, '秒');
-        // メタデータ取得後に音声プールを初期化
-        initializeAudioPool();
-      }
-    });
-    
-    // 音声の読み込み完了を監視
-    audioRef.current.addEventListener('canplaythrough', () => {
-      console.log('音声ファイルの読み込み完了');
-    });
-    
-    // 音声読み込みエラーを監視
-    audioRef.current.addEventListener('error', (event) => {
-      console.error('音声ファイルの読み込みエラー:', event);
-      const audio = event.target as HTMLAudioElement;
-      if (audio && audio.error) {
-        console.error('エラーコード:', audio.error.code);
-        console.error('エラーメッセージ:', audio.error.message);
-      }
-    });
-
-    // 音声ファイルのロード開始
-    audioRef.current.addEventListener('loadstart', () => {
-      console.log('音声ファイルのロード開始');
-    });
-
-    // 音声ファイルのロード進行状況
-    audioRef.current.addEventListener('progress', () => {
-      console.log('音声ファイルのロード中...');
-    });
-    
+    window.addEventListener('fireworkExploded', playFireworkExplosionSound);
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      // 音声プールをクリーンアップ
-      audioPool.current.forEach(audio => {
-        audio.pause();
-        audio.src = '';
-      });
-      audioPool.current = [];
-    };
-  }, []);
-
-  // 花火爆発イベントを監視して Web Audio で正確に音声を再生
-  useEffect(() => {
-    const handleFireworkExplosion = () => {
-      if (!audioEnabled) return;
-      const ctx = audioCtxRef.current;
-      const buffer = explosionBufferRef.current;
-      if (!ctx || !buffer) return;
-
-      const src = ctx.createBufferSource();
-      src.buffer = buffer;
-      src.connect(ctx.destination);
-
-      const visualLag = 1 / 60; // 描画 1 フレーム ≒ 16ms
-      const offset = Math.max(0, peakOffsetRef.current - visualLag);
-      src.start(ctx.currentTime, offset);
-    };
-
-    window.addEventListener('fireworkExploded', handleFireworkExplosion);
-    return () => {
-      window.removeEventListener('fireworkExploded', handleFireworkExplosion);
+      window.removeEventListener('fireworkExploded', playFireworkExplosionSound);
     };
   }, [audioEnabled]);
 
-  // 花火打ち上げ開始時にヒュー音を再生
-  useEffect(() => {
-    if (!fireworkEvent || !audioEnabled) return;
-    const ctx = audioCtxRef.current;
-    const buffer = launchBufferRef.current;
-    if (!ctx) return;
-    if (!buffer) {
-      // バッファ未読込の場合、少し待って再試行
-      setTimeout(() => {
-        setFireworkEvent((e) => (e ? { ...e } : null));
-      }, 100);
+  /**
+   * 花火打ち上げ音（ヒュー音）を再生する関数
+   * sounds_launch.mp3 を Web Audio API で再生
+   */
+  const playFireworkLaunchSound = async () => {
+    // 前提条件チェック
+    if (!audioEnabled || !audioCtxRef.current || !launchBufferRef.current) {
+      console.log('ヒュー音再生スキップ - 音声が無効またはバッファ未準備');
       return;
     }
+
+    const ctx = audioCtxRef.current;
+    
+    // AudioContext状態確認
     if (ctx.state === 'suspended') {
-      ctx.resume();
+      await ctx.resume();
     }
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    const gain = ctx.createGain();
-    gain.gain.value = launchVolume;
-    src.connect(gain).connect(ctx.destination);
-    src.start(ctx.currentTime);
-  }, [fireworkEvent, audioEnabled]);
+    
+    try {
+      // Web Audio API で sounds_launch.mp3 を再生
+      const audioSource = ctx.createBufferSource();
+      const volumeControl = ctx.createGain();
+      
+      audioSource.buffer = launchBufferRef.current;
+      volumeControl.gain.setValueAtTime(1.5, ctx.currentTime); // 音量設定
+      
+      // 音声ルーティング: 音源 → 音量調整 → スピーカー
+      audioSource.connect(volumeControl);
+      volumeControl.connect(ctx.destination);
+      
+      // 再生開始
+      audioSource.start(ctx.currentTime);
+      console.log('ヒュー音再生開始 (sounds_launch.mp3)');
+      
+    } catch (error) {
+      console.error('ヒュー音再生エラー:', error);
+    }
+  };
+
+  /**
+   * 完全な花火打ち上げ関数
+   * ヒュー音再生 + 花火イベント作成を統合
+   */
+  const launchCompleteFirework = async (eventData?: {
+    id?: string;
+    vibe?: {
+      color: string;
+      size: number;
+      pattern: string;
+      seed: number;
+    };
+    clickPosition?: { x: number; y: number }; // クリック位置
+  }) => {
+    console.log('=== 完全花火打ち上げ開始 ===');
+    
+    // デフォルト値の設定
+    const fireworkId = eventData?.id || `complete-${Date.now()}`;
+    const defaultVibe = {
+      color: '#4ecdc4',
+      size: 50,
+      pattern: 'burst',
+      seed: Math.random()
+    };
+    const vibe = eventData?.vibe || defaultVibe;
+
+    try {
+      // 1. ヒュー音を即座に再生
+      await playFireworkLaunchSound();
+      
+      // 2. 花火イベントを作成（視覚的な花火打ち上げ）
+      setFireworkEvent({
+        id: fireworkId,
+        vibe: vibe,
+        timestamp: Date.now(),
+        audioDuration: 4,
+        clickPosition: eventData?.clickPosition // クリック位置を渡す
+      });
+      
+      console.log('完全花火打ち上げ完了:', fireworkId);
+      
+    } catch (error) {
+      console.error('完全花火打ち上げエラー:', error);
+    }
+  };
+
+  // fireworkEventの自動再生は削除 - P5Fireworks側のfireworkLaunchedイベントのみでヒュー音を再生
+
+  // クリック花火打ち上げイベントを監視
+  useEffect(() => {
+    const handleClickLaunch = async (event: CustomEvent) => {
+      const { id, vibe, x, y } = event.detail;
+      console.log('クリック花火打ち上げ:', id, 'at position:', x, y);
+      await launchCompleteFirework({ 
+        id, 
+        vibe, 
+        clickPosition: { x, y } 
+      });
+    };
+
+    window.addEventListener('fireworkClickLaunch', handleClickLaunch as EventListener);
+    return () => {
+      window.removeEventListener('fireworkClickLaunch', handleClickLaunch as EventListener);
+    };
+  }, [audioEnabled]);
 
   useEffect(() => {
     console.log('Setting up Supabase Realtime subscription...');
@@ -428,6 +385,7 @@ export default function DisplayPage() {
             key: 'user-1',
           },
           broadcast: { self: true },
+          // @ts-expect-error supabase-js 型定義に未反映のオプション
           postgres_changes: { enabled: true }
         },
       })
@@ -453,12 +411,10 @@ export default function DisplayPage() {
             vibe: newEventPayload.vibe,
           };
           
-          // 花火イベントを設定
-          setFireworkEvent({
+          // 完全な花火打ち上げを実行
+          await launchCompleteFirework({
             id: newEvent.id,
-            vibe: newEvent.vibe,
-            timestamp: newEvent.timestamp,
-            audioDuration: audioDuration
+            vibe: newEvent.vibe
           });
           setLastFireworkEvent(newEvent);
           
@@ -529,11 +485,9 @@ export default function DisplayPage() {
             };
             
             const fallbackId = `fallback-${currentTime}`;
-            setFireworkEvent({
+            await launchCompleteFirework({
               id: fallbackId,
-              vibe: fallbackVibe,
-              timestamp: currentTime,
-              audioDuration: audioDuration
+              vibe: fallbackVibe
             });
             lastTriggerTime.current = currentTime;
             console.log("Firework triggered by polling (fallback):", data.acceleration.y);
@@ -551,7 +505,7 @@ export default function DisplayPage() {
       channel.unsubscribe();
       clearInterval(intervalId);
     };
-  }, [audioDuration]);
+  }, []);
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden" onClick={enableAudio}>
@@ -577,20 +531,40 @@ export default function DisplayPage() {
         {audioEnabled && (
           <div className="mt-4 p-4 bg-green-900 border border-green-600 rounded-lg">
             <p className="font-bold text-green-200">🎵 音声システム有効</p>
-            <p className="text-green-300 text-sm">音声プール: {maxConcurrentSounds}個同時再生対応</p>
+            <p className="text-green-300 text-sm">Web Audio API使用</p>
             <p className="text-green-300 text-sm">爆発同期遅延: {explosionSyncDelay}ms</p>
-            <div className="mt-2 space-x-2">
+            <p className="text-green-300 text-sm">ヒュー音: sounds_launch.mp3</p>
+            <div className="mt-2 space-x-2 flex flex-wrap gap-2">
               <button 
-                onClick={() => playFireworkSound()}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                onClick={() => {
+                  console.log('「ヒュー音のみ」ボタンがクリックされました');
+                  playFireworkLaunchSound();
+                }}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded text-sm"
               >
-                即座に音声テスト
+                ヒュー音のみ
               </button>
               <button 
-                onClick={() => playFireworkSound(explosionSyncDelay)}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+                onClick={() => {
+                  console.log('「爆発音のみ」ボタンがクリックされました');
+                  playFireworkExplosionSound();
+                }}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded text-sm"
               >
-                遅延音声テスト
+                爆発音のみ
+              </button>
+              <button 
+                onClick={() => {
+                  console.log('「完全テスト」ボタンがクリックされました');
+                  // 完全な花火テスト（統合関数使用）
+                  launchCompleteFirework({
+                    id: `test-${Date.now()}`,
+                    vibe: { color: '#4ecdc4', size: 50, pattern: 'burst', seed: Math.random() }
+                  });
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded text-sm"
+              >
+                完全テスト
               </button>
             </div>
           </div>

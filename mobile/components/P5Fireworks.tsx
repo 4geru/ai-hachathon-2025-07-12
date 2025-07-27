@@ -18,6 +18,7 @@ interface P5FireworksProps {
     vibe: FireworkVibe;
     timestamp: number;
     audioDuration?: number;
+    clickPosition?: { x: number; y: number }; // クリック位置
   } | null;
 }
 
@@ -250,7 +251,20 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
 
     p.mouseClicked = () => {
       if (p.mouseY < p.height - 50) {
-        fireworks.current.push(new Firework(p, p.mouseX, p.mouseY, vibe));
+        // クリック位置での花火打ち上げイベントを発行
+        window.dispatchEvent(new CustomEvent('fireworkClickLaunch', {
+          detail: { 
+            id: `click-${Date.now()}`,
+            x: p.mouseX, 
+            y: p.mouseY,
+            vibe: vibe || {
+              color: '#4ecdc4',
+              size: 50,
+              pattern: 'burst',
+              seed: Math.random()
+            }
+          }
+        }));
       }
     };
 
@@ -261,11 +275,24 @@ const P5Fireworks: React.FC<P5FireworksProps> = ({ vibe, position = 'random', fi
   useEffect(() => {
     if (fireworkEvent && fireworkEvent.id !== lastEventId.current && p5Instance.current) {
       const p = p5Instance.current;
-      const startX = position === 'center' ? p.width / 2 : p.random(p.width * 0.2, p.width * 0.8);
-      const startY = p.height - 50;
+      
+      // クリック位置が指定されている場合はそれを使用、そうでなければ通常の位置決定
+      let startX, startY;
+      if (fireworkEvent.clickPosition) {
+        startX = fireworkEvent.clickPosition.x;
+        startY = fireworkEvent.clickPosition.y;
+        console.log('クリック位置での花火作成:', startX, startY);
+      } else {
+        startX = position === 'center' ? p.width / 2 : p.random(p.width * 0.2, p.width * 0.8);
+        startY = p.height - 50;
+      }
+      
+      console.log('New firework creating:', fireworkEvent.id, 'Audio duration:', fireworkEvent.audioDuration);
+      
+      // 花火オブジェクトを作成（ヒュー音は launchCompleteFirework で既に再生済み）
       fireworks.current.push(new Firework(p, startX, startY, fireworkEvent.vibe, fireworkEvent.audioDuration));
       lastEventId.current = fireworkEvent.id;
-      console.log('New firework added:', fireworkEvent.id, 'Audio duration:', fireworkEvent.audioDuration);
+      console.log('New firework added:', fireworkEvent.id);
     }
   }, [fireworkEvent, position]);
 
